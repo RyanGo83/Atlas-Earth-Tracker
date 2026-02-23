@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { RentTracker } from './components/RentTracker';
 import { RivalTracker } from './components/RivalTracker';
@@ -58,19 +57,29 @@ const App: React.FC = () => {
 
   // --- GLOBAL DATA MANAGEMENT ---
   const handleExport = () => {
-    const backup = {
-      rent: localStorage.getItem(STORAGE_KEYS.RENT),
-      rival: localStorage.getItem(STORAGE_KEYS.RIVAL),
-      town: localStorage.getItem(STORAGE_KEYS.TOWN),
-      state: localStorage.getItem(STORAGE_KEYS.STATE),
-      country: localStorage.getItem(STORAGE_KEYS.COUNTRY),
-      earth: localStorage.getItem(STORAGE_KEYS.EARTH),
-      minigame: localStorage.getItem(STORAGE_KEYS.MINIGAME),
-      roi: localStorage.getItem(STORAGE_KEYS.ROI),
-      username: localStorage.getItem(STORAGE_KEYS.USERNAME),
-      homeTown: localStorage.getItem(STORAGE_KEYS.HOME_TOWN),
+    const backup: any = {
       _backupDate: new Date().toISOString()
     };
+    
+    // Map STORAGE_KEYS to backup object keys
+    const keyMap: Record<string, string> = {
+      RENT: 'rent',
+      RIVAL: 'rival',
+      TOWN: 'town',
+      STATE: 'state',
+      COUNTRY: 'country',
+      EARTH: 'earth',
+      MINIGAME: 'minigame',
+      ROI: 'roi',
+      PINNED: 'pinned',
+      USERNAME: 'username',
+      HOME_TOWN: 'homeTown'
+    };
+
+    Object.entries(keyMap).forEach(([storageKeyName, backupKey]) => {
+      const val = localStorage.getItem((STORAGE_KEYS as any)[storageKeyName]);
+      backup[backupKey] = val; // This will be null if not found, which is fine
+    });
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -106,45 +115,51 @@ const App: React.FC = () => {
         
         // Helper to safely restore string or object data
         const restore = (key: string, data: any) => {
-           if (data === undefined || data === null) return false;
-           try {
-             const valToStore = typeof data === 'string' ? data : JSON.stringify(data);
-             localStorage.setItem(key, valToStore);
-             return true;
-           } catch (err) {
-             console.error(`Failed to restore ${key}:`, err);
-             return false;
-           }
+          if (data === undefined || data === null) return false;
+          try {
+            const valToStore = typeof data === 'string' ? data : JSON.stringify(data);
+            localStorage.setItem(key, valToStore);
+            return true;
+          } catch (err) {
+            console.error(`Failed to restore ${key}:`, err);
+            return false;
+          }
         };
 
-        // 1. Check if it's a RAW data file (not a backup wrapper)
-        const rawKeys = ['towns', 'states', 'countries', 'regions', 'rivals', 'purchases', 'history', 'common', 'entries'];
-        const isRaw = Object.keys(backup).some(k => rawKeys.includes(k)) || Array.isArray(backup);
-        
-        if (isRaw && !backup.rent && !backup.town && !backup.rival) {
+        // 1. Check if it's a RAW data file (not a backup wrapper).
+        // A standard backup always has at least one of these keys.
+        const standardBackupKeys = ['rent', 'rival', 'town', 'state', 'minigame', 'roi', 'country', 'earth'];
+        const isArray = Array.isArray(backup);
+        const hasAnyStandardKey = !isArray && standardBackupKeys.some(k => backup[k] !== undefined);
+
+        if (!hasAnyStandardKey) {
           console.log("Identifying raw data file...");
           let identified = false;
           
-          if (backup.common !== undefined || backup.rare !== undefined) {
-            if (restore(STORAGE_KEYS.RENT, backup)) { identified = true; alert("Imported: Raw Rent Data"); }
-          } else if (backup.towns) {
-            if (restore(STORAGE_KEYS.TOWN, backup)) { identified = true; alert("Imported: Raw Town Data"); }
-          } else if (backup.states) {
-            if (restore(STORAGE_KEYS.STATE, backup)) { identified = true; alert("Imported: Raw State Data"); }
-          } else if (backup.rivals) {
-            if (restore(STORAGE_KEYS.RIVAL, backup)) { identified = true; alert("Imported: Raw Rival Data"); }
-          } else if (backup.countries) {
-            if (restore(STORAGE_KEYS.COUNTRY, backup)) { identified = true; alert("Imported: Raw Country Data"); }
-          } else if (backup.regions) {
-            if (restore(STORAGE_KEYS.EARTH, backup)) { identified = true; alert("Imported: Raw Earth Data"); }
-          } else if (backup.purchases) {
-            if (restore(STORAGE_KEYS.ROI, backup)) { identified = true; alert("Imported: Raw ROI Data"); }
-          } else if (Array.isArray(backup) && backup.length > 0 && (backup[0].game || backup[0].winnings !== undefined)) {
+          if (!isArray) {
+            if (backup.common !== undefined || backup.rare !== undefined) {
+              if (restore(STORAGE_KEYS.RENT, backup)) { identified = true; alert("Imported: Raw Rent Data"); }
+            } else if (backup.towns) {
+              if (restore(STORAGE_KEYS.TOWN, backup)) { identified = true; alert("Imported: Raw Town Data"); }
+            } else if (backup.states) {
+              if (restore(STORAGE_KEYS.STATE, backup)) { identified = true; alert("Imported: Raw State Data"); }
+            } else if (backup.rivals) {
+              if (restore(STORAGE_KEYS.RIVAL, backup)) { identified = true; alert("Imported: Raw Rival Data"); }
+            } else if (backup.countries) {
+              if (restore(STORAGE_KEYS.COUNTRY, backup)) { identified = true; alert("Imported: Raw Country Data"); }
+            } else if (backup.regions) {
+              if (restore(STORAGE_KEYS.EARTH, backup)) { identified = true; alert("Imported: Raw Earth Data"); }
+            } else if (backup.purchases) {
+              if (restore(STORAGE_KEYS.ROI, backup)) { identified = true; alert("Imported: Raw ROI Data"); }
+            }
+          } else if (backup.length > 0 && (backup[0].game || backup[0].winnings !== undefined)) {
             if (restore(STORAGE_KEYS.MINIGAME, backup)) { identified = true; alert("Imported: Raw MiniGame Data"); }
           }
           
           if (identified) {
-            setRefreshKey(prev => prev + 1);
+            // FIX: Use reload instead of setRefreshKey so all components
+            // re-initialize cleanly from the new localStorage state.
+            window.location.reload();
             return;
           }
         }
@@ -174,12 +189,14 @@ const App: React.FC = () => {
           }
         });
         
-        if (backup.username) setUsername(backup.username);
-        if (backup.homeTown || backup.hometown) setHomeTown(backup.homeTown || backup.hometown);
-        
         if (importedCount > 0) {
-          alert(`Successfully imported ${importedCount} sections: ${results.join(", ")}`);
-          setRefreshKey(prev => prev + 1);
+          alert(`Successfully imported ${importedCount} sections: ${results.join(", ")}.\n\nThe app will now reload to apply your data.`);
+          // FIX: Reload the page so all components re-initialize cleanly from
+          // the restored localStorage state. Using setRefreshKey caused a race
+          // condition where RivalTracker's loadData() would re-read other
+          // localStorage keys (country, earth) that weren't in the old backup,
+          // corrupting the restored data before components had settled.
+          window.location.reload();
         } else {
           alert("No recognizable data found in this file. Make sure it's a valid Atlas Earth Tracker backup.");
         }
@@ -297,73 +314,80 @@ const App: React.FC = () => {
         </div>
         
         {/* Navigation Tabs */}
-        <nav className="space-y-4 bg-slate-800/60 p-4 rounded-xl backdrop-blur-sm border border-slate-700">
-          <div>
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">General</div>
-            <div className="flex flex-wrap gap-2">
-              <NavButton 
-                isActive={activeTab === Tab.RENT} 
-                onClick={() => setActiveTab(Tab.RENT)} 
-                label="💰 My Stats" 
-                activeColor="bg-green-500 text-white"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.RIVAL} 
-                onClick={() => setActiveTab(Tab.RIVAL)} 
-                label="🏆 Rivals" 
-                activeColor="bg-blue-500 text-white"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.MINIGAME} 
-                onClick={() => setActiveTab(Tab.MINIGAME)} 
-                label="🎮 Mini Games" 
-                activeColor="bg-yellow-500 text-black"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.STRATEGY} 
-                onClick={() => setActiveTab(Tab.STRATEGY)} 
-                label="🧠 Strategy" 
-                activeColor="bg-red-500 text-white"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.ROI} 
-                onClick={() => setActiveTab(Tab.ROI)} 
-                label="📈 ROI" 
-                activeColor="bg-cyan-500 text-white"
-              />
-            </div>
-          </div>
+<nav className="bg-slate-800/60 p-4 rounded-xl backdrop-blur-sm border border-slate-700">
+  <div className="flex flex-wrap items-center gap-2">
+    {/* Group 1: My Stats & Mini Games */}
+    <NavButton 
+      isActive={activeTab === Tab.RENT} 
+      onClick={() => setActiveTab(Tab.RENT)} 
+      label="💰 My Stats" 
+      activeColor="bg-green-500 text-white"
+    />
+    <NavButton 
+      isActive={activeTab === Tab.MINIGAME} 
+      onClick={() => setActiveTab(Tab.MINIGAME)} 
+      label="🎮 Mini Games" 
+      activeColor="bg-yellow-500 text-black"
+    />
 
-          <div>
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">Location Trackers</div>
-            <div className="flex flex-wrap gap-2">
-              <NavButton 
-                isActive={activeTab === Tab.TOWN} 
-                onClick={() => setActiveTab(Tab.TOWN)} 
-                label="📍 Town" 
-                activeColor="bg-purple-500 text-white"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.STATE} 
-                onClick={() => setActiveTab(Tab.STATE)} 
-                label="🗺️ State" 
-                activeColor="bg-orange-500 text-white"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.COUNTRY} 
-                onClick={() => setActiveTab(Tab.COUNTRY)} 
-                label="🇺🇸 Country" 
-                activeColor="bg-emerald-500 text-white"
-              />
-              <NavButton 
-                isActive={activeTab === Tab.EARTH} 
-                onClick={() => setActiveTab(Tab.EARTH)} 
-                label="🌍 Earth" 
-                activeColor="bg-cyan-500 text-white"
-              />
-            </div>
-          </div>
-        </nav>
+    {/* Divider */}
+    <span className="text-slate-600 font-bold text-lg select-none">|</span>
+
+    {/* Group 2: Rivals */}
+    <NavButton 
+      isActive={activeTab === Tab.RIVAL} 
+      onClick={() => setActiveTab(Tab.RIVAL)} 
+      label="🏆 Rivals" 
+      activeColor="bg-blue-500 text-white"
+    />
+
+    {/* Divider */}
+    <span className="text-slate-600 font-bold text-lg select-none">|</span>
+
+    {/* Group 3: Strategy & ROI */}
+    <NavButton 
+      isActive={activeTab === Tab.STRATEGY} 
+      onClick={() => setActiveTab(Tab.STRATEGY)} 
+      label="🧠 Strategy" 
+      activeColor="bg-red-500 text-white"
+    />
+    <NavButton 
+      isActive={activeTab === Tab.ROI} 
+      onClick={() => setActiveTab(Tab.ROI)} 
+      label="📈 ROI" 
+      activeColor="bg-cyan-500 text-white"
+    />
+
+    {/* Divider */}
+    <span className="text-slate-600 font-bold text-lg select-none">|</span>
+
+    {/* Group 4: Location Trackers */}
+    <NavButton 
+      isActive={activeTab === Tab.TOWN} 
+      onClick={() => setActiveTab(Tab.TOWN)} 
+      label="📍 Town" 
+      activeColor="bg-purple-500 text-white"
+    />
+    <NavButton 
+      isActive={activeTab === Tab.STATE} 
+      onClick={() => setActiveTab(Tab.STATE)} 
+      label="🗺️ State" 
+      activeColor="bg-orange-500 text-white"
+    />
+    <NavButton 
+      isActive={activeTab === Tab.COUNTRY} 
+      onClick={() => setActiveTab(Tab.COUNTRY)} 
+      label="🌐 Country" 
+      activeColor="bg-emerald-500 text-white"
+    />
+    <NavButton 
+      isActive={activeTab === Tab.EARTH} 
+      onClick={() => setActiveTab(Tab.EARTH)} 
+      label="🌍 Earth" 
+      activeColor="bg-cyan-500 text-white"
+    />
+  </div>
+</nav>
       </header>
 
       {/* Main Content Area - key prop forces re-render on restore */}
