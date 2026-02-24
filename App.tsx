@@ -45,6 +45,7 @@ const App: React.FC = () => {
 
   // Profile State
   const [showProfile, setShowProfile] = useState(false);
+  const [lastRestored, setLastRestored] = useState<string | null>(localStorage.getItem('atlas_last_restored') || null);
   const [username, setUsername] = useState(localStorage.getItem(STORAGE_KEYS.USERNAME) || 'H1PHOPANONYMOUS');
   const [homeTown, setHomeTown] = useState(localStorage.getItem(STORAGE_KEYS.HOME_TOWN) || '');
 
@@ -157,11 +158,11 @@ const App: React.FC = () => {
           }
           
           if (identified) {
-            // FIX: Use reload instead of setRefreshKey so all components
-            // re-initialize cleanly from the new localStorage state.
-            window.location.reload();
-            return;
-          }
+			const now = new Date().toLocaleString();
+			localStorage.setItem('atlas_last_restored', now);
+			window.location.reload();
+			return;
+		  }
         }
 
         // 2. Standard Backup Import
@@ -190,13 +191,10 @@ const App: React.FC = () => {
         });
         
         if (importedCount > 0) {
-          alert(`Successfully imported ${importedCount} sections: ${results.join(", ")}.\n\nThe app will now reload to apply your data.`);
-          // FIX: Reload the page so all components re-initialize cleanly from
-          // the restored localStorage state. Using setRefreshKey caused a race
-          // condition where RivalTracker's loadData() would re-read other
-          // localStorage keys (country, earth) that weren't in the old backup,
-          // corrupting the restored data before components had settled.
-          window.location.reload();
+          const now = new Date().toLocaleString();
+			localStorage.setItem('atlas_last_restored', now);
+			alert(`Successfully imported ${importedCount} sections: ${results.join(", ")}.\n\nThe app will now reload to apply your data.`);
+			window.location.reload();
         } else {
           alert("No recognizable data found in this file. Make sure it's a valid Atlas Earth Tracker backup.");
         }
@@ -251,10 +249,15 @@ const App: React.FC = () => {
             >
               <Download size={16} /> Backup All
             </button>
-            <label className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-blue-400 px-4 py-2 rounded-lg font-bold border border-blue-400/30 cursor-pointer transition-colors text-sm">
-              <Upload size={16} /> Restore
-              <input type="file" className="hidden" accept=".json" onChange={handleImport} />
-            </label>
+            <div className="flex flex-col items-end gap-1">
+  <label className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-blue-400 px-4 py-2 rounded-lg font-bold border border-blue-400/30 cursor-pointer transition-colors text-sm">
+    <Upload size={16} /> Restore
+    <input type="file" className="hidden" accept=".json" onChange={handleImport} />
+  </label>
+  {lastRestored && (
+    <span className="text-[10px] text-slate-500">Last restored: {lastRestored}</span>
+  )}
+</div>
 
             {/* Profile Settings Dropdown/Modal */}
             {showProfile && (
