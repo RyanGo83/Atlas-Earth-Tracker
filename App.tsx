@@ -45,7 +45,11 @@ const App: React.FC = () => {
 
   // Profile State
   const [showProfile, setShowProfile] = useState(false);
-  const [lastRestored, setLastRestored] = useState<string | null>(localStorage.getItem('atlas_last_restored') || null);
+  const [lastRestored, setLastRestored] = useState<{ time: string; file: string } | null>(() => {
+    const stored = localStorage.getItem('atlas_last_restored');
+    if (!stored) return null;
+    try { return JSON.parse(stored); } catch { return { time: stored, file: '' }; }
+  });
   const [username, setUsername] = useState(localStorage.getItem(STORAGE_KEYS.USERNAME) || 'H1PHOPANONYMOUS');
   const [homeTown, setHomeTown] = useState(localStorage.getItem(STORAGE_KEYS.HOME_TOWN) || '');
 
@@ -158,11 +162,11 @@ const App: React.FC = () => {
           }
           
           if (identified) {
-			const now = new Date().toLocaleString();
-			localStorage.setItem('atlas_last_restored', now);
-			window.location.reload();
-			return;
-		  }
+            const restoreInfo = { time: new Date().toLocaleString(), file: file.name };
+            localStorage.setItem('atlas_last_restored', JSON.stringify(restoreInfo));
+            window.location.reload();
+            return;
+          }
         }
 
         // 2. Standard Backup Import
@@ -191,10 +195,10 @@ const App: React.FC = () => {
         });
         
         if (importedCount > 0) {
-          const now = new Date().toLocaleString();
-			localStorage.setItem('atlas_last_restored', now);
-			alert(`Successfully imported ${importedCount} sections: ${results.join(", ")}.\n\nThe app will now reload to apply your data.`);
-			window.location.reload();
+          const restoreInfo = { time: new Date().toLocaleString(), file: file.name };
+          localStorage.setItem('atlas_last_restored', JSON.stringify(restoreInfo));
+          alert(`Successfully imported ${importedCount} sections: ${results.join(", ")}.\n\nThe app will now reload to apply your data.`);
+          window.location.reload();
         } else {
           alert("No recognizable data found in this file. Make sure it's a valid Atlas Earth Tracker backup.");
         }
@@ -232,32 +236,34 @@ const App: React.FC = () => {
           <h1 className="text-3xl font-bold text-white">Atlas Earth Tracker</h1>
           
           {/* Global Actions */}
-          <div className="flex gap-2 relative items-stretch">
-            <button 
-              onClick={() => setShowProfile(!showProfile)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold border transition-colors text-sm ${
-                showProfile 
-                  ? 'bg-slate-600 text-white border-slate-500' 
-                  : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-700'
-              }`}
-            >
-              <User size={16} /> Profile
-            </button>
-            <button 
-              onClick={handleExport}
-              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-green-400 px-4 py-2 rounded-lg font-bold border border-green-400/30 transition-colors text-sm"
-            >
-              <Download size={16} /> Backup All
-            </button>
-            <div className="flex flex-col items-end gap-1">
-  <label className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-blue-400 px-4 py-2 rounded-lg font-bold border border-blue-400/30 cursor-pointer transition-colors text-sm">
-    <Upload size={16} /> Restore
-    <input type="file" className="hidden" accept=".json" onChange={handleImport} />
-  </label>
-  {lastRestored && (
-    <span className="text-[10px] text-slate-500">Last restored: {lastRestored}</span>
-  )}
-</div>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex gap-2 relative items-center">
+              <button 
+                onClick={() => setShowProfile(!showProfile)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold border transition-colors text-sm ${
+                  showProfile 
+                    ? 'bg-slate-600 text-white border-slate-500' 
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-700'
+                }`}
+              >
+                <User size={16} /> Profile
+              </button>
+              <button 
+                onClick={handleExport}
+                className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-green-400 px-4 py-2 rounded-lg font-bold border border-green-400/30 transition-colors text-sm"
+              >
+                <Download size={16} /> Backup All
+              </button>
+              <label className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-blue-400 px-4 py-2 rounded-lg font-bold border border-blue-400/30 cursor-pointer transition-colors text-sm">
+                <Upload size={16} /> Restore
+                <input type="file" className="hidden" accept=".json" onChange={handleImport} />
+              </label>
+            </div>
+            {lastRestored && (
+              <span className="text-[10px] text-slate-500">
+                Last restored: {lastRestored.time}{lastRestored.file ? ` — ${lastRestored.file}` : ''}
+              </span>
+            )}
 
             {/* Profile Settings Dropdown/Modal */}
             {showProfile && (
