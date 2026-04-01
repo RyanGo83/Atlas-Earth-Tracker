@@ -6,7 +6,7 @@ import {
 import { Trash2, PlusCircle, User, Edit2, Save as SaveIcon, X, RefreshCw, Crown, ChevronDown, MapPin, LayoutList, History, Pencil, Building2, UserPlus, Check, Search, AlertCircle, Users, TrendingUp, CalendarClock, Timer, Filter, ArrowUpDown, Award, Activity } from 'lucide-react';
 
 type EntryType = 'SNAPSHOT' | 'STATE' | 'TOWN' | 'COUNTRY' | 'EARTH';
-type TimeRange = 'YTD' | 'ALL';
+type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 interface RivalEntry {
   id: number | string;
