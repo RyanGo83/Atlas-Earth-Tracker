@@ -28,7 +28,7 @@ interface AllCountriesData {
 }
 
 type ViewMode = 'TABLE' | 'CHART';
-type TimeRange = 'YTD' | 'ALL';
+type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 const STORAGE_KEY = 'atlas_country_data_v2';
 const RIVAL_STORAGE_KEY = 'atlas_rival_data_v2';
