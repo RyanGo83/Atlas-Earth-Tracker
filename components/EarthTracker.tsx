@@ -28,7 +28,7 @@ interface AllEarthData {
 }
 
 type ViewMode = 'TABLE' | 'CHART';
-type TimeRange = 'YTD' | 'ALL';
+type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 const STORAGE_KEY = 'atlas_earth_data_v2';
 const RIVAL_STORAGE_KEY = 'atlas_rival_data_v2';
