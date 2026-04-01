@@ -484,7 +484,7 @@ export const CountryTracker: React.FC = () => {
               <div className="flex items-center gap-3 bg-slate-800 p-1 rounded-lg border border-slate-700">
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">Range</span>
                 <div className="flex gap-1 pr-1">
-                  {(['YTD', 'ALL'] as TimeRange[]).map((range) => (
+                  {{(['WTD', 'MTD', 'YTD', 'ALL'] as TimeRange[]).map((range) => (
                     <button key={range} onClick={() => setTimeRange(range)} className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all ${timeRange === range ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>{range}</button>
                   ))}
                 </div>
