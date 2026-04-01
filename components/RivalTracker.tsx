@@ -446,11 +446,20 @@ export const RivalTracker: React.FC = () => {
     let rivalSnaps = [...snapshotEntries].sort((a, b) => new Date(a.dateSpotted).getTime() - new Date(b.dateSpotted).getTime());
     let myHistory = (myRentStats?.history || []).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    if (timeRange === 'YTD') {
+    if (timeRange !== 'ALL') {
       const now = new Date();
-      const firstOfYear = new Date(now.getFullYear(), 0, 1);
-      rivalSnaps = rivalSnaps.filter(e => new Date(e.dateSpotted) >= firstOfYear);
-      myHistory = myHistory.filter((h: any) => new Date(h.date) >= firstOfYear);
+      let cutoff: Date;
+      if (timeRange === 'WTD') {
+        cutoff = new Date(now);
+        cutoff.setDate(now.getDate() - now.getDay());
+        cutoff.setHours(0, 0, 0, 0);
+      } else if (timeRange === 'MTD') {
+        cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else {
+        cutoff = new Date(now.getFullYear(), 0, 1);
+      }
+      rivalSnaps = rivalSnaps.filter(e => new Date(e.dateSpotted) >= cutoff);
+      myHistory = myHistory.filter((h: any) => new Date(h.date) >= cutoff);
     }
 
     const allDatesSet = new Set<string>();
