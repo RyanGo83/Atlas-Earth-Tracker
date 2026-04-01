@@ -35,7 +35,7 @@ interface RentData {
 }
 
 type ChartMode = 'WALLET' | 'PORTFOLIO';
-type TimeRange = 'YTD' | 'ALL';
+type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'atlas_rent_data_v2';
