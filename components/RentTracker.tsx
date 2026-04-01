@@ -422,7 +422,7 @@ export const RentTracker: React.FC = () => {
             <div className="flex items-center gap-3 mb-4 bg-slate-900/50 p-2 rounded-xl border border-slate-700 w-fit ml-auto">
                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">Range</span>
                <div className="flex gap-1 pr-1">
-                 {(['YTD', 'ALL'] as TimeRange[]).map((range) => (
+                 {(['WTD', 'MTD', 'YTD', 'ALL'] as TimeRange[]).map((range) => (
                    <button 
                      key={range}
                      onClick={() => setTimeRange(range)}
