@@ -289,10 +289,19 @@ export const TownTracker: React.FC = () => {
   const filteredChartEntries = useMemo(() => {
     if (timeRange === 'ALL') return currentEntries;
     const now = new Date();
+    if (timeRange === 'WTD') {
+      const firstOfWeek = new Date(now);
+      firstOfWeek.setDate(now.getDate() - now.getDay());
+      firstOfWeek.setHours(0, 0, 0, 0);
+      return currentEntries.filter(e => new Date(e.date) >= firstOfWeek);
+    }
+    if (timeRange === 'MTD') {
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return currentEntries.filter(e => new Date(e.date) >= firstOfMonth);
+    }
     const firstOfYear = new Date(now.getFullYear(), 0, 1);
     return currentEntries.filter(e => new Date(e.date) >= firstOfYear);
   }, [currentEntries, timeRange]);
-
   const chartData = useMemo(() => {
     if (filteredChartEntries.length === 0) return [];
     
