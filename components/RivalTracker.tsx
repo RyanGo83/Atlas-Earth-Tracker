@@ -4,9 +4,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Line, ComposedChart 
 } from 'recharts';
 import { Trash2, PlusCircle, User, Edit2, Save as SaveIcon, X, RefreshCw, Crown, ChevronDown, MapPin, LayoutList, History, Pencil, Building2, UserPlus, Check, Search, AlertCircle, Users, TrendingUp, CalendarClock, Timer, Filter, ArrowUpDown, Award, Activity } from 'lucide-react';
+import { TimeRange, filterByTimeRange } from '../utils';
 
 type EntryType = 'SNAPSHOT' | 'STATE' | 'TOWN' | 'COUNTRY' | 'EARTH';
-type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 interface RivalEntry {
   id: number | string;
@@ -443,29 +443,16 @@ export const RivalTracker: React.FC = () => {
   }, [data.rivals, data.currentRival, townTrackerData, stateTrackerData]);
 
   const combinedChartData = useMemo(() => {
-    let rivalSnaps = [...snapshotEntries].sort((a, b) => new Date(a.dateSpotted).getTime() - new Date(b.dateSpotted).getTime());
-    let myHistory = (myRentStats?.history || []).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let rivalSnaps = [...snapshotEntries].sort((a, b) => new Date(a.dateSpotted + 'T00:00:00').getTime() - new Date(b.dateSpotted + 'T00:00:00').getTime());
+    let myHistory = (myRentStats?.history || []).sort((a: any, b: any) => new Date(a.date + 'T00:00:00').getTime() - new Date(b.date + 'T00:00:00').getTime());
 
-    if (timeRange !== 'ALL') {
-      const now = new Date();
-      let cutoff: Date;
-      if (timeRange === 'WTD') {
-        cutoff = new Date(now);
-        cutoff.setDate(now.getDate() - now.getDay());
-        cutoff.setHours(0, 0, 0, 0);
-      } else if (timeRange === 'MTD') {
-        cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
-      } else {
-        cutoff = new Date(now.getFullYear(), 0, 1);
-      }
-      rivalSnaps = rivalSnaps.filter(e => new Date(e.dateSpotted) >= cutoff);
-      myHistory = myHistory.filter((h: any) => new Date(h.date) >= cutoff);
-    }
+    rivalSnaps = filterByTimeRange(rivalSnaps, 'dateSpotted', timeRange);
+    myHistory = filterByTimeRange(myHistory, 'date', timeRange);
 
     const allDatesSet = new Set<string>();
     rivalSnaps.forEach(e => allDatesSet.add(e.dateSpotted));
     myHistory.forEach((h: any) => allDatesSet.add(h.date));
-    const sortedDates = Array.from(allDatesSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const sortedDates = Array.from(allDatesSet).sort((a, b) => new Date(a + 'T00:00:00').getTime() - new Date(b + 'T00:00:00').getTime());
 
     let lastMyParcels: number | undefined = undefined;
     let lastMyTotalAccrued: number | undefined = undefined;

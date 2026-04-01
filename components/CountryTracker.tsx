@@ -8,6 +8,7 @@ import {
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
+import { TimeRange, filterByTimeRange, parseLocalDate } from '../utils';
 
 // --- TYPES ---
 interface CountryEntry {
@@ -28,7 +29,6 @@ interface AllCountriesData {
 }
 
 type ViewMode = 'TABLE' | 'CHART';
-type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 const STORAGE_KEY = 'atlas_country_data_v2';
 const RIVAL_STORAGE_KEY = 'atlas_rival_data_v2';
@@ -264,24 +264,21 @@ export const CountryTracker: React.FC = () => {
   }, [playerHistory]);
 
   const filteredChartEntries = useMemo(() => {
-    if (timeRange === 'ALL') return currentEntries;
-    const now = new Date();
-    const firstOfYear = new Date(now.getFullYear(), 0, 1);
-    return currentEntries.filter(e => new Date(e.date) >= firstOfYear);
+    return filterByTimeRange(currentEntries, 'date', timeRange);
   }, [currentEntries, timeRange]);
 
   const chartData = useMemo(() => {
     if (filteredChartEntries.length === 0) return [];
     const allDatesSet = new Set<string>();
     filteredChartEntries.forEach(e => allDatesSet.add(e.date));
-    const sortedDates = Array.from(allDatesSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const sortedDates = Array.from(allDatesSet).sort((a, b) => parseLocalDate(a).getTime() - parseLocalDate(b).getTime());
     const topPlayerNames = currentLeaderboard.slice(0, 10).map(p => p.name);
     
     return sortedDates.map(date => {
       const entry: any = { date };
       topPlayerNames.forEach(name => {
         const history = [...playerHistory[name]].reverse();
-        const latestOnOrBefore = history.filter(h => new Date(h.date) <= new Date(date)).pop();
+        const latestOnOrBefore = history.filter(h => parseLocalDate(h.date) <= parseLocalDate(date)).pop();
         if (latestOnOrBefore) entry[name] = latestOnOrBefore.parcels;
       });
       return entry;

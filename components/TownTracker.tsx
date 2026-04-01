@@ -8,6 +8,7 @@ import {
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
+import { TimeRange, filterByTimeRange, parseLocalDate } from '../utils';
 
 // --- TYPES ---
 interface TownEntry {
@@ -28,7 +29,6 @@ interface AllTownsData {
 }
 
 type ViewMode = 'TABLE' | 'CHART';
-type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 const STORAGE_KEY = 'atlas_town_data_v2';
 const RIVAL_STORAGE_KEY = 'atlas_rival_data_v2';
@@ -287,20 +287,7 @@ export const TownTracker: React.FC = () => {
 
   // --- CHART DATA PROCESSING ---
   const filteredChartEntries = useMemo(() => {
-    if (timeRange === 'ALL') return currentEntries;
-    const now = new Date();
-    if (timeRange === 'WTD') {
-      const firstOfWeek = new Date(now);
-      firstOfWeek.setDate(now.getDate() - now.getDay());
-      firstOfWeek.setHours(0, 0, 0, 0);
-      return currentEntries.filter(e => new Date(e.date) >= firstOfWeek);
-    }
-    if (timeRange === 'MTD') {
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      return currentEntries.filter(e => new Date(e.date) >= firstOfMonth);
-    }
-    const firstOfYear = new Date(now.getFullYear(), 0, 1);
-    return currentEntries.filter(e => new Date(e.date) >= firstOfYear);
+    return filterByTimeRange(currentEntries, 'date', timeRange);
   }, [currentEntries, timeRange]);
   const chartData = useMemo(() => {
     if (filteredChartEntries.length === 0) return [];
@@ -308,7 +295,7 @@ export const TownTracker: React.FC = () => {
     // Get all unique dates within the filtered range
     const allDatesSet = new Set<string>();
     filteredChartEntries.forEach(e => allDatesSet.add(e.date));
-    const sortedDates = Array.from(allDatesSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const sortedDates = Array.from(allDatesSet).sort((a, b) => parseLocalDate(a).getTime() - parseLocalDate(b).getTime());
     
     // Players to show (Top 10 current)
     const topPlayerNames = currentLeaderboard.slice(0, 10).map(p => p.name);
@@ -319,7 +306,7 @@ export const TownTracker: React.FC = () => {
         // Find most recent entry for this player on or before this date
         // We look at the full playerHistory to ensure we have the correct "current" count even if not updated today
         const history = [...playerHistory[name]].reverse(); // Chronological
-        const latestOnOrBefore = history.filter(h => new Date(h.date) <= new Date(date)).pop();
+        const latestOnOrBefore = history.filter(h => parseLocalDate(h.date) <= parseLocalDate(date)).pop();
         if (latestOnOrBefore) {
           entry[name] = latestOnOrBefore.parcels;
         }

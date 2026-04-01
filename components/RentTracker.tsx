@@ -4,6 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ComposedChart, Bar
 } from 'recharts';
 import { AlertTriangle, TrendingUp, Wallet, Settings2, History as HistoryIcon, Clock, Calendar, Landmark, Coins, LayoutDashboard, Activity, User, Save, Check } from 'lucide-react';
+import { TimeRange, filterByTimeRange } from '../utils';
 
 // --- TYPES & INTERFACES ---
 interface WalletHistoryItem {
@@ -35,7 +36,6 @@ interface RentData {
 }
 
 type ChartMode = 'WALLET' | 'PORTFOLIO';
-type TimeRange = 'WTD' | 'MTD' | 'YTD' | 'ALL';
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'atlas_rent_data_v2';
@@ -235,25 +235,7 @@ export const RentTracker: React.FC = () => {
   // Filtered History based on time range
   const filteredHistory = useMemo(() => {
     if (!data.history || data.history.length === 0) return [];
-    if (timeRange === 'ALL') return data.history;
-
-    const now = new Date();
-    if (timeRange === 'WTD') {
-      const firstOfWeek = new Date(now);
-      firstOfWeek.setDate(now.getDate() - now.getDay());
-      firstOfWeek.setHours(0, 0, 0, 0);
-      return data.history.filter(h => new Date(h.date) >= firstOfWeek);
-    }
-    if (timeRange === 'MTD') {
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      return data.history.filter(h => new Date(h.date) >= firstOfMonth);
-    }
-    if (timeRange === 'YTD') {
-      const firstOfYear = new Date(now.getFullYear(), 0, 1);
-      return data.history.filter(h => new Date(h.date) >= firstOfYear);
-    }
-
-    return data.history;
+    return filterByTimeRange(data.history, 'date', timeRange);
   }, [data.history, timeRange]);
 
   return (
