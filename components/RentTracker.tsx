@@ -238,6 +238,16 @@ export const RentTracker: React.FC = () => {
     if (timeRange === 'ALL') return data.history;
 
     const now = new Date();
+    if (timeRange === 'WTD') {
+      const firstOfWeek = new Date(now);
+      firstOfWeek.setDate(now.getDate() - now.getDay());
+      firstOfWeek.setHours(0, 0, 0, 0);
+      return data.history.filter(h => new Date(h.date) >= firstOfWeek);
+    }
+    if (timeRange === 'MTD') {
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return data.history.filter(h => new Date(h.date) >= firstOfMonth);
+    }
     if (timeRange === 'YTD') {
       const firstOfYear = new Date(now.getFullYear(), 0, 1);
       return data.history.filter(h => new Date(h.date) >= firstOfYear);
