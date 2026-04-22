@@ -199,7 +199,7 @@ export const MiniGameTracker: React.FC = () => {
                      <div className="flex items-center gap-4 mt-4 md:mt-0">
                         <div className="text-right hidden md:block mr-4">
                            <div className="text-slate-500 text-xs uppercase font-bold">Latest Entry</div>
-                           <div className="text-slate-300 text-sm">{history.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date}</div>
+                           <div className="text-slate-300 text-sm">{[...entries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date}</div>
                         </div>
                         <button className={`p-2 rounded-full bg-slate-700 text-slate-300 hover:text-white transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                            <ChevronDown size={20} />
