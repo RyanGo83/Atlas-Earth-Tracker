@@ -268,8 +268,14 @@ export const RivalTracker: React.FC = () => {
   const executeImport = () => {
       const newRivals = { ...data.rivals };
       let changes = false;
-      selectedImports.forEach(name => { if (!newRivals[name]) { newRivals[name] = []; changes = true; } });
-      potentialRivals.forEach(p => { if (!selectedImports.has(p.name) && newRivals[p.name]) { delete newRivals[p.name]; changes = true; } });
+      selectedImports.forEach(name => {
+        const normalizedName = name.trim().toUpperCase();
+        if (!newRivals[normalizedName]) { newRivals[normalizedName] = []; changes = true; }
+      });
+      potentialRivals.forEach(p => {
+        const normalizedName = p.name.trim().toUpperCase();
+        if (!selectedImports.has(p.name) && newRivals[normalizedName]) { delete newRivals[normalizedName]; changes = true; }
+      });
       if (changes) {
           let nextRival = data.currentRival;
           if (data.currentRival && !newRivals[data.currentRival]) nextRival = Object.keys(newRivals)[0] || null;
@@ -280,8 +286,9 @@ export const RivalTracker: React.FC = () => {
 
   const addRival = () => {
     if (!newRivalName.trim()) return;
-    if (data.rivals[newRivalName]) { alert('Rival exists'); return; }
-    setData(prev => ({ ...prev, rivals: { ...prev.rivals, [newRivalName]: [] }, currentRival: newRivalName }));
+    const normalizedName = newRivalName.trim().toUpperCase();
+    if (data.rivals[normalizedName]) { alert('Rival exists'); return; }
+    setData(prev => ({ ...prev, rivals: { ...prev.rivals, [normalizedName]: [] }, currentRival: normalizedName }));
     setNewRivalName('');
   };
 
@@ -295,14 +302,16 @@ export const RivalTracker: React.FC = () => {
   };
 
   const saveRename = () => {
-    if (!data.currentRival || !renameValue.trim() || renameValue === data.currentRival) { setIsRenaming(false); return; }
-    if (data.rivals[renameValue]) { alert("Name taken"); return; }
+    if (!data.currentRival || !renameValue.trim()) { setIsRenaming(false); return; }
+    const normalizedName = renameValue.trim().toUpperCase();
+    if (normalizedName === data.currentRival) { setIsRenaming(false); return; }
+    if (data.rivals[normalizedName]) { alert("Name taken"); return; }
     const oldName = data.currentRival;
     const entries = data.rivals[oldName];
     const newRivals = { ...data.rivals };
     delete newRivals[oldName];
-    newRivals[renameValue] = entries;
-    setData({ rivals: newRivals, currentRival: renameValue });
+    newRivals[normalizedName] = entries;
+    setData({ rivals: newRivals, currentRival: normalizedName });
     setIsRenaming(false);
   };
 

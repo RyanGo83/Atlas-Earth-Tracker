@@ -122,7 +122,7 @@ export const StateTracker: React.FC = () => {
     
     const newEntry: StateEntry = {
       id: editingId || generateId(),
-      name: entryName.trim(),
+      name: entryName.trim().toUpperCase(),
       rank: entryRank ? parseInt(entryRank) : null,
       parcels: parseInt(entryParcels),
       date: entryDate

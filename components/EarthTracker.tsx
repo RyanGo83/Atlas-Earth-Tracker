@@ -103,7 +103,7 @@ export const EarthTracker: React.FC = () => {
 
   const handleSaveEntry = () => {
     if (!data.currentRegion || !entryName || !entryParcels) return;
-    const cleanName = entryName.trim();
+    const cleanName = entryName.trim().toUpperCase();
 
     const newEntry: EarthEntry = {
       id: editingId || Date.now(),

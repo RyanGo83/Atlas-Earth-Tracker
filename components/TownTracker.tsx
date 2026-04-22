@@ -119,7 +119,7 @@ export const TownTracker: React.FC = () => {
 
   const handleSaveEntry = () => {
     if (!data.currentTown || !entryName || !entryParcels) return;
-    const cleanName = entryName.trim();
+    const cleanName = entryName.trim().toUpperCase();
 
     const newEntry: TownEntry = {
       id: editingId || Date.now(),

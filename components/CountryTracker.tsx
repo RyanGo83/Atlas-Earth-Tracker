@@ -103,7 +103,7 @@ export const CountryTracker: React.FC = () => {
 
   const handleSaveEntry = () => {
     if (!data.currentCountry || !entryName || !entryParcels) return;
-    const cleanName = entryName.trim();
+    const cleanName = entryName.trim().toUpperCase();
 
     const newEntry: CountryEntry = {
       id: editingId || Date.now(),
