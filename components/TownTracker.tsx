@@ -21,6 +21,8 @@ interface TownEntry {
 interface TownData {
   entries: TownEntry[];
   lastUpdated: string;
+  state?: string;
+  country?: string;
 }
 
 interface AllTownsData {
@@ -39,6 +41,81 @@ const COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
   '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1'
 ];
+
+// US states for the location picker autocomplete
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", 
+  "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", 
+  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", 
+  "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", 
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", 
+  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
+  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", 
+  "Wisconsin", "Wyoming", "District of Columbia"
+];
+
+// Seed mapping of common Atlas Earth towns to their states.
+// Expand this over time — used to auto-tag existing towns on load and new ones on creation.
+const COMMON_TOWN_STATES: Record<string, string> = {
+  // Florida
+  "St. Petersburg": "Florida",
+  "Tampa": "Florida",
+  "Orlando": "Florida",
+  "Miami": "Florida",
+  "Jacksonville": "Florida",
+  "Tallahassee": "Florida",
+  "Fort Lauderdale": "Florida",
+  "Clearwater": "Florida",
+  "Sarasota": "Florida",
+  "Naples": "Florida",
+  "Fort Myers": "Florida",
+  "Daytona Beach": "Florida",
+  "Gainesville": "Florida",
+  "Pensacola": "Florida",
+  "Key West": "Florida",
+  "Redington Beach": "Florida",
+  "North Redington Beach": "Florida",
+  "Ocala": "Florida",
+  "Lakeland": "Florida",
+  "Bradenton": "Florida",
+  "Venice": "Florida",
+  "Cape Coral": "Florida",
+  "West Palm Beach": "Florida",
+  "Boca Raton": "Florida",
+  // Other common US cities
+  "New York": "New York",
+  "Los Angeles": "California",
+  "Chicago": "Illinois",
+  "Houston": "Texas",
+  "Phoenix": "Arizona",
+  "Philadelphia": "Pennsylvania",
+  "San Antonio": "Texas",
+  "San Diego": "California",
+  "Dallas": "Texas",
+  "Austin": "Texas",
+  "San Francisco": "California",
+  "Seattle": "Washington",
+  "Denver": "Colorado",
+  "Boston": "Massachusetts",
+  "Nashville": "Tennessee",
+  "Atlanta": "Georgia",
+  "Las Vegas": "Nevada",
+  "Portland": "Oregon",
+  "Minneapolis": "Minnesota",
+  "New Orleans": "Louisiana",
+  "Swarthmore": "Pennsylvania",
+  "Pittsburgh": "Pennsylvania",
+};
+
+// Case-insensitive lookup so "tampa" and "Tampa" both work
+const lookupTownState = (townName: string): string | undefined => {
+  if (!townName) return undefined;
+  const clean = townName.trim();
+  if (COMMON_TOWN_STATES[clean]) return COMMON_TOWN_STATES[clean];
+  const lower = clean.toLowerCase();
+  const match = Object.keys(COMMON_TOWN_STATES).find(k => k.toLowerCase() === lower);
+  return match ? COMMON_TOWN_STATES[match] : undefined;
+};
 
 export const TownTracker: React.FC = () => {
   // --- STATE ---
@@ -66,25 +143,49 @@ export const TownTracker: React.FC = () => {
   const [modalSearch, setModalSearch] = useState('');
   const isInitialized = useRef(false);
 
-  // --- PERSISTENCE & MIGRATION ---
+  // Location Editor Modal State
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationTownName, setLocationTownName] = useState<string>('');
+  const [locationState, setLocationState] = useState<string>('');
+  const [locationCountry, setLocationCountry] = useState<string>('USA');
+
+// --- PERSISTENCE & MIGRATION ---
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.towns) {
-          Object.values(parsed.towns).forEach((town: any) => {
+          Object.entries(parsed.towns).forEach(([townName, town]: [string, any]) => {
+            // Ensure every entry has an id
             if (town.entries) {
               town.entries.forEach((e: any, idx: number) => {
                 if (!e.id) e.id = Date.now() + idx; 
               });
+            }
+            // Migration: default country to USA if missing
+            if (!town.country) town.country = 'USA';
+            // Migration: auto-fill state from the common-towns lookup when possible
+            if (!town.state) {
+              const guess = lookupTownState(townName);
+              if (guess) town.state = guess;
             }
           });
         }
         setData(parsed);
       } catch (e) { console.error(e); }
     } else {
-      setData({ towns: { 'St. Petersburg': { entries: [], lastUpdated: new Date().toISOString() } }, currentTown: 'St. Petersburg' });
+      setData({ 
+        towns: { 
+          'St. Petersburg': { 
+            entries: [], 
+            lastUpdated: new Date().toISOString(),
+            state: 'Florida',
+            country: 'USA'
+          } 
+        }, 
+        currentTown: 'St. Petersburg' 
+      });
     }
     isInitialized.current = true;
   }, []);
@@ -95,14 +196,24 @@ export const TownTracker: React.FC = () => {
     }
   }, [data]);
 
-  const addTown = () => {
-    if (!newTownName.trim()) return;
-    if (data.towns[newTownName]) { alert('Town exists'); return; }
+const addTown = () => {
+    const trimmed = newTownName.trim();
+    if (!trimmed) return;
+    if (data.towns[trimmed]) { alert('Town exists'); return; }
     
+    const guessedState = lookupTownState(trimmed);
     setData(prev => ({
       ...prev,
-      towns: { ...prev.towns, [newTownName]: { entries: [], lastUpdated: new Date().toISOString() } },
-      currentTown: newTownName
+      towns: { 
+        ...prev.towns, 
+        [trimmed]: { 
+          entries: [], 
+          lastUpdated: new Date().toISOString(),
+          state: guessedState,
+          country: 'USA'
+        } 
+      },
+      currentTown: trimmed
     }));
     setNewTownName('');
   };
@@ -215,10 +326,15 @@ export const TownTracker: React.FC = () => {
     const newTowns = { ...data.towns };
     let changes = false;
     
-    // Add selected towns that aren't already there
+// Add selected towns that aren't already there
     selectedTowns.forEach(t => {
       if (!newTowns[t]) {
-        newTowns[t] = { entries: [], lastUpdated: new Date().toISOString() };
+        newTowns[t] = { 
+          entries: [], 
+          lastUpdated: new Date().toISOString(),
+          state: lookupTownState(t),
+          country: 'USA'
+        };
         changes = true;
       }
     });
@@ -242,11 +358,41 @@ export const TownTracker: React.FC = () => {
     setShowManageModal(false);
   };
 
-  const toggleTownSelection = (name: string) => {
+const toggleTownSelection = (name: string) => {
     const newSet = new Set(selectedTowns);
     if (newSet.has(name)) newSet.delete(name);
     else newSet.add(name);
     setSelectedTowns(newSet);
+  };
+
+  // --- LOCATION EDITOR ---
+  const openLocationEditor = () => {
+    if (!data.currentTown) return;
+    const town = data.towns[data.currentTown];
+    setLocationTownName(data.currentTown);
+    setLocationState(town?.state || '');
+    setLocationCountry(town?.country || 'USA');
+    setShowLocationModal(true);
+  };
+
+  const saveLocation = () => {
+    if (!locationTownName || !data.towns[locationTownName]) {
+      setShowLocationModal(false);
+      return;
+    }
+    setData(prev => ({
+      ...prev,
+      towns: {
+        ...prev.towns,
+        [locationTownName]: {
+          ...prev.towns[locationTownName],
+          state: locationState.trim() || undefined,
+          country: locationCountry.trim() || 'USA',
+          lastUpdated: new Date().toISOString()
+        }
+      }
+    }));
+    setShowLocationModal(false);
   };
 
   // --- LEADERBOARD & TREND LOGIC ---
@@ -345,6 +491,77 @@ export const TownTracker: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Location Editor Modal */}
+      {showLocationModal && (
+        <div 
+          className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowLocationModal(false)}
+        >
+          <div 
+            className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                <MapPin className="text-purple-400" size={20} /> Edit Town Location
+              </h3>
+              <button onClick={() => setShowLocationModal(false)} className="text-slate-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-slate-400 text-xs mb-4">
+              Tag <span className="text-white font-bold">{locationTownName}</span> with its state and country. Used later for leaderboard rollups.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Country</label>
+                <input
+                  type="text"
+                  value={locationCountry}
+                  onChange={(e) => setLocationCountry(e.target.value)}
+                  placeholder="USA"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  State / Region
+                </label>
+                <input
+                  type="text"
+                  value={locationState}
+                  onChange={(e) => setLocationState(e.target.value)}
+                  list="state-suggestions"
+                  placeholder={locationCountry.trim().toUpperCase() === 'USA' ? 'e.g., Florida' : 'e.g., Île-de-France'}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-purple-500"
+                />
+                {locationCountry.trim().toUpperCase() === 'USA' && (
+                  <datalist id="state-suggestions">
+                    {US_STATES.map(s => <option key={s} value={s} />)}
+                  </datalist>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button 
+                onClick={() => setShowLocationModal(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={saveLocation}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg font-bold transition-colors"
+              >
+                Save Location
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showManageModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]">
@@ -410,16 +627,43 @@ export const TownTracker: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col md:flex-row gap-4 items-center justify-between">
-         <div className="flex items-center gap-3 w-full md:w-auto">
-            <MapPin className="text-purple-400 flex-shrink-0" />
-            <select 
-              className="bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer outline-none focus:ring-2 focus:ring-purple-500 flex-1 md:flex-none"
-              value={data.currentTown || ''}
-              onChange={(e) => setData(prev => ({ ...prev, currentTown: e.target.value }))}
-            >
-              {Object.keys(data.towns).sort().map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+      <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+         <div className="flex flex-col gap-2 w-full md:w-auto">
+           <div className="flex items-center gap-3 w-full md:w-auto">
+              <MapPin className="text-purple-400 flex-shrink-0" />
+              <select 
+                className="bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer outline-none focus:ring-2 focus:ring-purple-500 flex-1 md:flex-none"
+                value={data.currentTown || ''}
+                onChange={(e) => setData(prev => ({ ...prev, currentTown: e.target.value }))}
+              >
+                {Object.keys(data.towns).sort().map(t => {
+                  const needsTag = !data.towns[t].state;
+                  return <option key={t} value={t}>{needsTag ? '⚠️ ' : ''}{t}</option>;
+                })}
+              </select>
+           </div>
+           {/* Location badge / editor trigger */}
+           {data.currentTown && (() => {
+              const town = data.towns[data.currentTown];
+              const hasState = Boolean(town?.state);
+              return (
+                <button 
+                  onClick={openLocationEditor}
+                  className={`flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-md ml-7 transition-colors ${
+                    hasState 
+                      ? 'text-slate-400 hover:text-white bg-slate-900/50 hover:bg-slate-700 border border-slate-700' 
+                      : 'text-amber-400 hover:text-white bg-amber-900/20 hover:bg-amber-600/30 border border-amber-500/30'
+                  }`}
+                  title="Edit town location"
+                >
+                  <MapPin size={12} />
+                  {hasState 
+                    ? `${town.state}, ${town.country || 'USA'}` 
+                    : 'Set state / country'}
+                  <Pencil size={11} className="opacity-60" />
+                </button>
+              );
+           })()}
          </div>
 
          <div className="flex gap-2 w-full md:w-auto items-center">
