@@ -419,8 +419,8 @@ const App: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="bg-slate-800/60 p-4 rounded-xl backdrop-blur-sm border border-slate-700">
-          <div className="flex flex-wrap items-center gap-2">
+        <nav className="bg-slate-800/60 p-3 md:p-4 rounded-xl backdrop-blur-sm border border-slate-700">
+          <div className="flex items-center gap-2 overflow-x-auto tab-scroll pb-1">
             {/* Group 1: My Stats & Mini Games */}
             <NavButton
               isActive={activeTab === Tab.RENT}
@@ -435,8 +435,7 @@ const App: React.FC = () => {
               activeColor="bg-yellow-500 text-black"
             />
 
-            {/* Divider */}
-            <span className="text-slate-600 font-bold text-lg select-none">|</span>
+            <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
 
             {/* Group 2: Rivals */}
             <NavButton
@@ -446,8 +445,7 @@ const App: React.FC = () => {
               activeColor="bg-blue-500 text-white"
             />
 
-            {/* Divider */}
-            <span className="text-slate-600 font-bold text-lg select-none">|</span>
+            <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
 
             {/* Group 3: Strategy & ROI */}
             <NavButton
@@ -463,8 +461,7 @@ const App: React.FC = () => {
               activeColor="bg-cyan-500 text-white"
             />
 
-            {/* Divider */}
-            <span className="text-slate-600 font-bold text-lg select-none">|</span>
+            <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
 
             {/* Group 4: Location Trackers */}
             <NavButton
@@ -575,7 +572,7 @@ const NavButton: React.FC<NavButtonProps> = ({ isActive, onClick, label, activeC
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 transform hover:-translate-y-0.5 ${
+      className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition-all duration-200 transform hover:-translate-y-0.5 ${
         isActive
           ? `${activeColor} shadow-lg`
           : 'text-slate-300 hover:bg-slate-700 hover:text-white'
