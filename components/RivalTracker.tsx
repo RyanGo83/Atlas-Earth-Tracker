@@ -476,11 +476,14 @@ const handleSaveEntry = () => {
     });
 
     // Sort by parcel count desc (biggest mayor towns first)
-    results.sort((a, b) => b.parcels - a.parcels);
+results.sort((a, b) => b.parcels - a.parcels);
     return results;
   }, [data.currentRival, townTrackerData]);
+
+  const { groupedEntries, snapshotEntries, townKeys, stats, growthStats } = useMemo(() => {
       const currentRival = data.currentRival;
       const manualEntries = currentRival ? (data.rivals[currentRival] || []) : [];
+	  
       const syncedEntries: RivalEntry[] = [];
       const syncFromSource = (sourceData: any, type: EntryType, collectionKey: 'towns' | 'states') => {
         if (currentRival && sourceData && sourceData[collectionKey]) {
