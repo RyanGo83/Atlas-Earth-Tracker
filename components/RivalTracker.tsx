@@ -153,6 +153,7 @@ export const RivalTracker: React.FC = () => {
   const [dateSpotted, setDateSpotted] = useState(new Date().toISOString().split('T')[0]);
   const [entryType, setEntryType] = useState<EntryType>('TOWN');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [mayorSectionExpanded, setMayorSectionExpanded] = useState(true);
   const [showMyComparison, setShowMyComparison] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>('ALL');
   
@@ -419,7 +420,65 @@ const handleSaveEntry = () => {
 
   const toggleExpand = (key: string) => { setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] })); };
 
-  const { groupedEntries, snapshotEntries, townKeys, stats, growthStats } = useMemo(() => {
+// Compute which towns the current rival is Mayor of, from town data
+  const mayorTowns = useMemo(() => {
+    const currentRival = data.currentRival;
+    if (!currentRival || !townTrackerData?.towns) return [];
+
+    const results: Array<{
+      town: string;
+      state?: string;
+      country?: string;
+      parcels: number;
+      lastObserved: string;
+      runnerUpParcels: number;
+      runnerUpName: string | null;
+      gap: number;
+    }> = [];
+
+    Object.entries(townTrackerData.towns).forEach(([townName, townData]: [string, any]) => {
+      const entries = townData.entries || [];
+      if (entries.length === 0) return;
+
+      // Get latest entry per player in this town
+      const latestPerPlayer: Record<string, any> = {};
+      entries.forEach((e: any) => {
+        const clean = e.name.trim();
+        if (!clean) return;
+        if (!latestPerPlayer[clean] || new Date(e.date) > new Date(latestPerPlayer[clean].date)) {
+          latestPerPlayer[clean] = e;
+        }
+      });
+
+      const sorted = Object.values(latestPerPlayer).sort((a: any, b: any) => b.parcels - a.parcels);
+      if (sorted.length === 0) return;
+
+      // Mayor = explicit rank===1 if present, otherwise top of parcel-sorted list
+      const explicitMayor = sorted.find((p: any) => p.rank === 1);
+      const mayor: any = explicitMayor || sorted[0];
+
+      // Is our current rival the mayor?
+      if (mayor.name.trim() !== currentRival) return;
+
+      // Find runner-up (first player who isn't the mayor)
+      const runnerUp: any = sorted.find((p: any) => p.name.trim() !== mayor.name.trim());
+
+      results.push({
+        town: townName,
+        state: townData.state,
+        country: townData.country,
+        parcels: mayor.parcels,
+        lastObserved: mayor.date,
+        runnerUpParcels: runnerUp ? runnerUp.parcels : 0,
+        runnerUpName: runnerUp ? runnerUp.name : null,
+        gap: runnerUp ? (mayor.parcels - runnerUp.parcels) : mayor.parcels
+      });
+    });
+
+    // Sort by parcel count desc (biggest mayor towns first)
+    results.sort((a, b) => b.parcels - a.parcels);
+    return results;
+  }, [data.currentRival, townTrackerData]);
       const currentRival = data.currentRival;
       const manualEntries = currentRival ? (data.rivals[currentRival] || []) : [];
       const syncedEntries: RivalEntry[] = [];
@@ -970,6 +1029,92 @@ const handleSaveEntry = () => {
                    )}
                 </div>
              )}
+            {/* Known Mayor Of — computed from town data */}
+             {mayorTowns.length > 0 && (
+               <div className="bg-slate-800 rounded-xl border border-yellow-500/30 shadow-lg overflow-hidden">
+                  <div 
+                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-700/30 transition-colors bg-gradient-to-r from-yellow-900/10 to-transparent"
+                    onClick={() => setMayorSectionExpanded(!mayorSectionExpanded)}
+                  >
+                     <div className="flex items-center gap-4">
+                        <div className="bg-yellow-500/20 p-3 rounded-lg text-yellow-500">
+                           <Crown size={20} />
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                              Known Mayor Of 
+                              <span className="text-[10px] bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                 {mayorTowns.length} {mayorTowns.length === 1 ? 'town' : 'towns'}
+                              </span>
+                           </h3>
+                           <div className="text-xs text-slate-400 mt-0.5">
+                              Computed from your town observations
+                           </div>
+                        </div>
+                     </div>
+                     <button className={`text-slate-400 ${mayorSectionExpanded ? 'rotate-180' : ''} transition-transform`}>
+                        <ChevronDown />
+                     </button>
+                  </div>
+                  {mayorSectionExpanded && (
+                    <div className="border-t border-slate-700 bg-slate-900/50 p-4 animate-fade-in">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                            <tr>
+                              <th className="p-2">Town</th>
+                              <th className="p-2">Parcels</th>
+                              <th className="p-2 hidden md:table-cell">Lead Over #2</th>
+                              <th className="p-2 hidden md:table-cell">Last Seen</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-700 text-slate-300">
+                            {mayorTowns.map(m => {
+                              // Highlight safe / contested mayor titles visually
+                              const gapColor = 
+                                m.gap >= 50 ? 'text-green-400' :
+                                m.gap >= 10 ? 'text-yellow-400' :
+                                'text-red-400';
+                              return (
+                                <tr key={m.town} className="hover:bg-slate-800/40 transition-colors">
+                                  <td className="p-2">
+                                    <div className="flex items-center gap-2">
+                                      <Crown size={12} className="text-yellow-500 flex-shrink-0" />
+                                      <div>
+                                        <div className="font-bold text-white">{m.town}</div>
+                                        {m.state && (
+                                          <div className="text-[10px] text-slate-500">
+                                            {m.state}{m.country && m.country !== 'USA' ? `, ${m.country}` : ''}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-2 font-mono text-green-400 font-bold">{m.parcels}</td>
+                                  <td className={`p-2 font-mono ${gapColor} hidden md:table-cell`}>
+                                    {m.runnerUpName ? (
+                                      <span>+{m.gap} <span className="text-slate-600 text-[10px]">vs {m.runnerUpName}</span></span>
+                                    ) : (
+                                      <span className="text-slate-500">no rival</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-xs text-slate-400 hidden md:table-cell">{m.lastObserved}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-3 text-[10px] text-slate-500 px-2">
+                        <span className="text-green-400">●</span> Safe (50+)&nbsp;&nbsp;
+                        <span className="text-yellow-400">●</span> Watch (10–49)&nbsp;&nbsp;
+                        <span className="text-red-400">●</span> Contested (under 10)
+                      </div>
+                    </div>
+                  )}
+               </div>
+             )}
+
              <div className="space-y-4">
                <h4 className="text-slate-400 font-bold text-xs uppercase flex items-center gap-2 mt-6"><MapPin size={14} className="text-purple-500" /> Town Stats</h4>
                {townKeys.map(town => <GroupCard key={town} name={town} entries={groupedEntries[town]} isExpanded={expandedGroups[town]} toggle={() => toggleExpand(town)} onEdit={startEditing} onDelete={deleteEntry} icon={<MapPin size={16} className="text-purple-400" />} theme="purple" editingId={editingId} />)}
