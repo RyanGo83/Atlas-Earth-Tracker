@@ -19,6 +19,11 @@ interface RivalEntry {
   activityLevel: string;
   isSynced?: boolean;
   entryType: EntryType;
+  // Rarity breakdown — only used on SNAPSHOT entries, optional for backward compat
+  common?: number;
+  rare?: number;
+  epic?: number;
+  legendary?: number;
 }
 
 interface AllRivalsData {
@@ -141,6 +146,10 @@ export const RivalTracker: React.FC = () => {
   const [parcels, setParcels] = useState<number | ''>('');
   const [earnings, setEarnings] = useState<number | ''>(''); 
   const [passports, setPassports] = useState<number | ''>('');
+  const [common, setCommon] = useState<number | ''>('');
+  const [rare, setRare] = useState<number | ''>('');
+  const [epic, setEpic] = useState<number | ''>('');
+  const [legendary, setLegendary] = useState<number | ''>('');
   const [dateSpotted, setDateSpotted] = useState(new Date().toISOString().split('T')[0]);
   const [entryType, setEntryType] = useState<EntryType>('TOWN');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -243,7 +252,7 @@ export const RivalTracker: React.FC = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     if (data.currentRival && entryType === 'SNAPSHOT' && !editingId) {
       const entries = data.rivals[data.currentRival] || [];
       const snapshots = entries.filter(e => e.entryType === 'SNAPSHOT');
@@ -252,8 +261,14 @@ export const RivalTracker: React.FC = () => {
         setEarnings(latest.earnings);
         setPassports(latest.passports || 0);
         setParcels(latest.parcels);
+        // Prefill rarity breakdown from latest snapshot (likely a lower bound since parcels only go up)
+        setCommon(latest.common ?? '');
+        setRare(latest.rare ?? '');
+        setEpic(latest.epic ?? '');
+        setLegendary(latest.legendary ?? '');
       } else {
         setEarnings(''); setPassports(''); setParcels('');
+        setCommon(''); setRare(''); setEpic(''); setLegendary('');
       }
     }
   }, [data.currentRival, entryType, editingId]);
@@ -315,25 +330,57 @@ export const RivalTracker: React.FC = () => {
     setIsRenaming(false);
   };
 
-  const startEditing = (entry: RivalEntry) => {
+const startEditing = (entry: RivalEntry) => {
       if (entry.isSynced) { alert("Synced entry cannot be edited here."); return; }
       setEditingId(entry.id);
       setDateSpotted(entry.dateSpotted);
       setParcels(entry.parcels);
       setEntryType(entry.entryType);
-      if (entry.entryType === 'SNAPSHOT') { setEarnings(entry.earnings || ''); setPassports(entry.passports || ''); setTownName(''); setRank(''); }
-      else { setTownName(entry.townName); setRank(entry.rank === null ? '' : entry.rank); setEarnings(''); setPassports(''); }
+      if (entry.entryType === 'SNAPSHOT') { 
+        setEarnings(entry.earnings || ''); 
+        setPassports(entry.passports || ''); 
+        setTownName(''); setRank(''); 
+        setCommon(entry.common ?? '');
+        setRare(entry.rare ?? '');
+        setEpic(entry.epic ?? '');
+        setLegendary(entry.legendary ?? '');
+      }
+      else { 
+        setTownName(entry.townName); 
+        setRank(entry.rank === null ? '' : entry.rank); 
+        setEarnings(''); setPassports(''); 
+        setCommon(''); setRare(''); setEpic(''); setLegendary('');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const cancelEditing = () => {
+const cancelEditing = () => {
       setEditingId(null); setParcels(''); setEarnings(''); setPassports(''); setTownName(''); setRank(''); setEntryType('TOWN');
+      setCommon(''); setRare(''); setEpic(''); setLegendary('');
       setDateSpotted(new Date().toISOString().split('T')[0]);
   };
 
-  const handleSaveEntry = () => {
+const handleSaveEntry = () => {
     if (!data.currentRival) return;
     if (!dateSpotted || (entryType !== 'SNAPSHOT' && !townName)) { alert("Required fields missing"); return; }
+
+    // Rarity sanity check (only when SNAPSHOT and user entered rarity numbers)
+    if (entryType === 'SNAPSHOT') {
+      const c = Number(common) || 0;
+      const r = Number(rare) || 0;
+      const ep = Number(epic) || 0;
+      const lg = Number(legendary) || 0;
+      const rarityTotal = c + r + ep + lg;
+      const totalParcels = Number(parcels) || 0;
+      const anyRarityEntered = common !== '' || rare !== '' || epic !== '' || legendary !== '';
+      if (anyRarityEntered && totalParcels > 0 && rarityTotal !== totalParcels) {
+        const proceed = window.confirm(
+          `Rarity breakdown (${rarityTotal}) doesn't match total parcels (${totalParcels}).\n\nSave anyway? Click Cancel to fix first.`
+        );
+        if (!proceed) return;
+      }
+    }
+
     const newEntry: RivalEntry = {
       id: editingId || Date.now(),
       townName: entryType === 'SNAPSHOT' ? "Portfolio Snapshot" : townName,
@@ -341,7 +388,16 @@ export const RivalTracker: React.FC = () => {
       parcels: Number(parcels) || 0,
       earnings: entryType === 'SNAPSHOT' ? (Number(earnings) || 0) : 0,
       passports: entryType === 'SNAPSHOT' ? (Number(passports) || 0) : undefined,
-      dateSpotted, activityLevel: 'Unknown', entryType
+      dateSpotted, activityLevel: 'Unknown', entryType,
+      // Attach rarity only for SNAPSHOTs and only when at least one number was entered
+      ...(entryType === 'SNAPSHOT' && (common !== '' || rare !== '' || epic !== '' || legendary !== '')
+        ? {
+            common: Number(common) || 0,
+            rare: Number(rare) || 0,
+            epic: Number(epic) || 0,
+            legendary: Number(legendary) || 0,
+          }
+        : {})
     };
     const currentList = data.rivals[data.currentRival] || [];
     let updatedList = editingId ? currentList.map(e => String(e.id) === String(editingId) ? newEntry : e) : [...currentList, newEntry];
@@ -810,6 +866,47 @@ export const RivalTracker: React.FC = () => {
                 {editingId && <button onClick={cancelEditing} className="bg-slate-700 text-white px-4 py-2 rounded text-sm hover:bg-slate-600 transition-colors">Cancel</button>}
               </div>
             </div>
+
+            {/* Rarity Breakdown — only shown for SNAPSHOT entries */}
+            {entryType === 'SNAPSHOT' && (
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Rarity Breakdown (Optional)</label>
+                  {(() => {
+                    const c = Number(common) || 0;
+                    const r = Number(rare) || 0;
+                    const ep = Number(epic) || 0;
+                    const lg = Number(legendary) || 0;
+                    const rarityTotal = c + r + ep + lg;
+                    const total = Number(parcels) || 0;
+                    const anyEntered = common !== '' || rare !== '' || epic !== '' || legendary !== '';
+                    if (!anyEntered) return null;
+                    if (rarityTotal === total) {
+                      return <span className="text-[10px] font-bold text-green-400">✓ Sum matches ({rarityTotal})</span>;
+                    }
+                    return <span className="text-[10px] font-bold text-amber-400">⚠ Sum: {rarityTotal} vs Total: {total}</span>;
+                  })()}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Common</label>
+                    <input type="number" placeholder="0" value={common} onChange={e => setCommon(e.target.value === '' ? '' : (parseInt(e.target.value) || 0))} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rare</label>
+                    <input type="number" placeholder="0" value={rare} onChange={e => setRare(e.target.value === '' ? '' : (parseInt(e.target.value) || 0))} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Epic</label>
+                    <input type="number" placeholder="0" value={epic} onChange={e => setEpic(e.target.value === '' ? '' : (parseInt(e.target.value) || 0))} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Legendary</label>
+                    <input type="number" placeholder="0" value={legendary} onChange={e => setLegendary(e.target.value === '' ? '' : (parseInt(e.target.value) || 0))} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -829,14 +926,44 @@ export const RivalTracker: React.FC = () => {
                       <div className="p-4 border-t border-slate-700 bg-slate-900/50">
                         <table className="w-full text-left text-sm">
                           <thead className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                            <tr><th className="p-2">Date</th><th className="p-2">Parcels</th><th className="p-2">Passports</th><th className="p-2">Earnings ($)</th><th className="p-2 text-right">Action</th></tr>
+                            <tr>
+                              <th className="p-2">Date</th>
+                              <th className="p-2">Parcels</th>
+                              <th className="p-2 hidden md:table-cell">Rarity (C / R / E / L)</th>
+                              <th className="p-2">Passports</th>
+                              <th className="p-2">Earnings ($)</th>
+                              <th className="p-2 text-right">Action</th>
+                            </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-700 text-slate-300">
-                            {snapshotEntries.map(e => (
-                              <tr key={e.id}><td className="p-2 text-xs">{e.dateSpotted}</td><td className="p-2 font-mono text-green-400">{e.parcels}</td><td className="p-2 font-mono text-cyan-400">{e.passports || 0}</td><td className="p-2 font-mono text-white">${e.earnings?.toFixed(2)}</td><td className="p-2 text-right">
-                                  <button onClick={() => startEditing(e)} className="text-blue-400 mr-2 p-1 rounded hover:bg-slate-700"><Pencil size={14}/></button>
-                                  <button onClick={() => deleteEntry(e.id)} className="text-red-400 p-1 rounded hover:bg-slate-700"><Trash2 size={14}/></button></td></tr>
-                            ))}
+                            {snapshotEntries.map(e => {
+                              const hasRarity = e.common !== undefined || e.rare !== undefined || e.epic !== undefined || e.legendary !== undefined;
+                              return (
+                                <tr key={e.id}>
+                                  <td className="p-2 text-xs">{e.dateSpotted}</td>
+                                  <td className="p-2 font-mono text-green-400">{e.parcels}</td>
+                                  <td className="p-2 font-mono text-xs hidden md:table-cell">
+                                    {hasRarity ? (
+                                      <span>
+                                        <span className="text-slate-400">{e.common ?? 0}</span>
+                                        <span className="text-slate-600"> / </span>
+                                        <span className="text-blue-400">{e.rare ?? 0}</span>
+                                        <span className="text-slate-600"> / </span>
+                                        <span className="text-purple-400">{e.epic ?? 0}</span>
+                                        <span className="text-slate-600"> / </span>
+                                        <span className="text-yellow-400">{e.legendary ?? 0}</span>
+                                      </span>
+                                    ) : <span className="text-slate-600">—</span>}
+                                  </td>
+                                  <td className="p-2 font-mono text-cyan-400">{e.passports || 0}</td>
+                                  <td className="p-2 font-mono text-white">${e.earnings?.toFixed(2)}</td>
+                                  <td className="p-2 text-right">
+                                    <button onClick={() => startEditing(e)} className="text-blue-400 mr-2 p-1 rounded hover:bg-slate-700"><Pencil size={14}/></button>
+                                    <button onClick={() => deleteEntry(e.id)} className="text-red-400 p-1 rounded hover:bg-slate-700"><Trash2 size={14}/></button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
