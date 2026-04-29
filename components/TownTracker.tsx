@@ -251,7 +251,11 @@ const addTown = () => {
       ...prev,
       towns: {
         ...prev.towns,
-        [prev.currentTown!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
+        [prev.currentTown!]: {
+          ...prev.towns[prev.currentTown!],
+          entries: updatedEntries,
+          lastUpdated: new Date().toISOString()
+        }
       }
     }));
 
@@ -284,7 +288,11 @@ const addTown = () => {
        ...prev,
        towns: {
          ...prev.towns,
-         [prev.currentTown!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
+         [prev.currentTown!]: {
+           ...prev.towns[prev.currentTown!],
+           entries: updatedEntries,
+           lastUpdated: new Date().toISOString()
+         }
        }
      }));
      if (editingId === id) cancelEditing();
