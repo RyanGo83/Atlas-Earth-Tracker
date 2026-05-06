@@ -37,6 +37,8 @@ export interface PeriodEarnings {
 //              and only count earnings from that snapshot forward
 
 export interface AllPeriodEarnings {
+  sinceLast: SinceLastEarnings | null;  // delta between latest 2 snapshots
+  last7: PeriodEarnings | null;          // earnings over the last 7 days (smoothed)
   today: PeriodEarnings | null;
   thisWeek: PeriodEarnings | null;
   thisMonth: PeriodEarnings | null;
@@ -45,6 +47,16 @@ export interface AllPeriodEarnings {
   last30: PeriodEarnings | null;
   prior30: PeriodEarnings | null;  // for momentum: 30 days BEFORE last30
   allTime: PeriodEarnings | null;
+}
+
+// Special period: delta between the two most recent snapshots.
+// Always exact — both endpoints are real data points.
+export interface SinceLastEarnings {
+  earned: number;          // dollars between the two most recent snapshots
+  daysSpanned: number;     // calendar days between them (>= 1)
+  baselineDate: string;    // earlier of the two snapshot dates
+  endDate: string;         // most recent snapshot date
+  dailyAverage: number;    // earned / daysSpanned
 }
 
 // --- DATE HELPERS ---
@@ -212,6 +224,44 @@ export const earningsForPeriod = (
 };
 
 /**
+ * Compute the earnings between the two most recent snapshots.
+ * Always exact (both ends are real data points). Returns null if fewer than 2 snapshots.
+ */
+export const sinceLastSnapshot = (history: EarningsHistoryItem[]): SinceLastEarnings | null => {
+  if (!history || history.length < 2) return null;
+
+  // De-dupe by date and sort ascending
+  const byDate: Record<string, EarningsHistoryItem> = {};
+  history.forEach(h => {
+    if (h.date && typeof h.totalAccrued === 'number') byDate[h.date] = h;
+  });
+  const sorted = Object.values(byDate).sort((a, b) =>
+    parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+  );
+  if (sorted.length < 2) return null;
+
+  const latest = sorted[sorted.length - 1];
+  const previous = sorted[sorted.length - 2];
+
+  const dayMs = 1000 * 60 * 60 * 24;
+  const daysSpanned = Math.max(
+    1,
+    Math.round(
+      (parseLocalDate(latest.date).getTime() - parseLocalDate(previous.date).getTime()) / dayMs
+    )
+  );
+  const earned = Math.max(0, latest.totalAccrued - previous.totalAccrued);
+
+  return {
+    earned,
+    daysSpanned,
+    baselineDate: previous.date,
+    endDate: latest.date,
+    dailyAverage: earned / daysSpanned
+  };
+};
+
+/**
  * Compute earnings for all the standard periods at once.
  */
 export const computeAllPeriods = (history: EarningsHistoryItem[]): AllPeriodEarnings => {
@@ -224,6 +274,8 @@ export const computeAllPeriods = (history: EarningsHistoryItem[]): AllPeriodEarn
   );
 
   return {
+    sinceLast: sinceLastSnapshot(history),
+    last7:     earningsForPeriod(history, daysAgo(7),      tomorrow,        'Last 7 days'),
     today:     earningsForPeriod(history, startOfDay(),    tomorrow,        'Today'),
     thisWeek:  earningsForPeriod(history, startOfWeek(),   tomorrow,        'This week'),
     thisMonth: earningsForPeriod(history, thisMonthStart,  tomorrow,        'This month'),

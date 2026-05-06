@@ -5,7 +5,7 @@ import {
   PlusCircle, Zap, ShieldCheck, History, Info, PieChart, ShoppingBag, Clock, RefreshCw, Pencil, Save, X, ChevronDown,
   BarChart3, Target, Activity
 } from 'lucide-react';
-import { computeAllPeriods, projectionFromRentData, projectedForDays, type PeriodEarnings, type Confidence } from '../earnings';
+import { computeAllPeriods, projectionFromRentData, projectedForDays, type PeriodEarnings, type Confidence, type SinceLastEarnings } from '../earnings';
 
 // --- CONSTANTS & TYPES ---
 const STORAGE_KEY = 'atlas_roi_data_v2';
@@ -287,15 +287,35 @@ export const ROITracker: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Today */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {/* Since Last Snapshot */}
           <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
-            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Today</div>
-            <div className="text-green-400 text-lg font-mono font-bold leading-none" title={confidenceTitle(periods.today)}>
-              {confidenceMark(periods.today?.confidence)}${periods.today ? fmt(periods.today.earned) : '—'}
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">
+              {periods.sinceLast 
+                ? `Since Last (${periods.sinceLast.daysSpanned} ${periods.sinceLast.daysSpanned === 1 ? 'day' : 'days'})`
+                : 'Since Last'}
             </div>
-            <div className="text-[9px] text-slate-500 mt-1">&nbsp;</div>
+            <div className="text-green-400 text-lg font-mono font-bold leading-none" title={periods.sinceLast ? `From ${periods.sinceLast.baselineDate} → ${periods.sinceLast.endDate}` : 'Need at least 2 snapshots'}>
+              ${periods.sinceLast ? fmt(periods.sinceLast.earned, 4) : '—'}
+            </div>
+            <div className="text-[9px] text-slate-500 mt-1">
+              {periods.sinceLast ? `avg $${fmt(periods.sinceLast.dailyAverage)}/day` : '\u00A0'}
+            </div>
           </div>
+
+          {/* 7-Day Rate */}
+          <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">7-Day Rate</div>
+            <div className="text-green-400 text-lg font-mono font-bold leading-none" title={confidenceTitle(periods.last7)}>
+              {confidenceMark(periods.last7?.confidence)}${periods.last7 && periods.last7.daysInPeriod > 0 ? fmt(periods.last7.dailyAverage) : '—'}
+              <span className="text-slate-500 text-[10px] font-normal ml-1">/day</span>
+            </div>
+            <div className="text-[9px] text-slate-500 mt-1">
+              {periods.last7 ? `$${fmt(periods.last7.earned, 2)} total` : '\u00A0'}
+            </div>
+          </div>
+
+          {/* This Week */}
 
           {/* This Week */}
           <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
@@ -416,28 +436,45 @@ export const ROITracker: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
-                {[
-                  { label: 'Today', p: periods.today, days: 1 },
-                  { label: 'This week', p: periods.thisWeek, days: 7 },
-                  { label: 'This month', p: periods.thisMonth, days: 30 },
-                  { label: 'This year', p: periods.thisYear, days: 365 }
-                ].map(({ label, p, days }) => {
+               
+{[
+                  // Since Last: use the actual day-span of the snapshot delta
+                  ...(periods.sinceLast ? [{
+                    label: `Since Last (${periods.sinceLast.daysSpanned} ${periods.sinceLast.daysSpanned === 1 ? 'day' : 'days'})`,
+                    actualAmt: periods.sinceLast.earned,
+                    days: periods.sinceLast.daysSpanned,
+                    confidence: 'exact' as Confidence,
+                    titleHint: `From ${periods.sinceLast.baselineDate} → ${periods.sinceLast.endDate}`,
+                    dailyAvg: periods.sinceLast.dailyAverage
+                  }] : []),
+                  // Last 7 Days as total
+                  {
+                    label: 'Last 7 days',
+                    actualAmt: periods.last7?.earned ?? 0,
+                    days: 7,
+                    confidence: periods.last7?.confidence,
+                    titleHint: confidenceTitle(periods.last7),
+                    dailyAvg: periods.last7?.daysInPeriod ? periods.last7.dailyAverage : 0
+                  },
+                  { label: 'This week', actualAmt: periods.thisWeek?.earned ?? 0, days: 7, confidence: periods.thisWeek?.confidence, titleHint: confidenceTitle(periods.thisWeek), dailyAvg: periods.thisWeek?.daysInPeriod ? periods.thisWeek.dailyAverage : 0 },
+                  { label: 'This month', actualAmt: periods.thisMonth?.earned ?? 0, days: 30, confidence: periods.thisMonth?.confidence, titleHint: confidenceTitle(periods.thisMonth), dailyAvg: periods.thisMonth?.daysInPeriod ? periods.thisMonth.dailyAverage : 0 },
+                  { label: 'This year', actualAmt: periods.thisYear?.earned ?? 0, days: 365, confidence: periods.thisYear?.confidence, titleHint: confidenceTitle(periods.thisYear), dailyAvg: periods.thisYear?.daysInPeriod ? periods.thisYear.dailyAverage : 0 }
+                ].map(({ label, actualAmt, days, confidence, titleHint, dailyAvg }) => {
                   const projectedAmt = projection ? projectedForDays(projection, days) : 0;
-                  const actualAmt = p ? p.earned : 0;
                   const gap = actualAmt - projectedAmt;
                   const gapPct = projectedAmt > 0 ? (gap / projectedAmt) * 100 : 0;
                   return (
                     <tr key={label} className="hover:bg-slate-700/20 transition-colors">
                       <td className="p-3 text-slate-300">{label}</td>
                       <td className="p-3 text-right font-mono text-slate-400">${fmt(projectedAmt, days <= 7 ? 4 : 2)}</td>
-                      <td className="p-3 text-right font-mono text-white font-bold" title={confidenceTitle(p)}>
-                        {confidenceMark(p?.confidence)}${fmt(actualAmt, days <= 7 ? 4 : 2)}
+                      <td className="p-3 text-right font-mono text-white font-bold" title={titleHint}>
+                        {confidenceMark(confidence)}${fmt(actualAmt, days <= 7 ? 4 : 2)}
                       </td>
                       <td className={`p-3 text-right font-mono hidden md:table-cell ${gap >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {projectedAmt > 0 ? `${gap >= 0 ? '+' : ''}${gapPct.toFixed(1)}%` : '—'}
                       </td>
                       <td className="p-3 text-right font-mono text-slate-400 hidden md:table-cell">
-                        {p && p.daysInPeriod > 0 ? `$${fmt(p.dailyAverage)}` : '—'}
+                        {dailyAvg > 0 ? `$${fmt(dailyAvg)}` : '—'}
                       </td>
                     </tr>
                   );
