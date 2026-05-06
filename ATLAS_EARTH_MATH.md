@@ -10,9 +10,15 @@ A reference guide for the key metrics, formulas, and calculations that power the
 - [Expected Value Calculation](#expected-value-calculation)
 - [Badge System & Passport Levels](#badge-system--passport-levels)
 - [Rent Multipliers](#rent-multipliers)
+- [Daily Login Bonus](#daily-login-bonus)
+- [Atlas Bucks & Pricing](#atlas-bucks--pricing)
+- [Premium Subscriptions](#premium-subscriptions)
+- [Challenge Reward Ladder](#challenge-reward-ladder)
 - [Parcel Acquisition Strategy](#parcel-acquisition-strategy)
 - [Quick Decision Formulas](#quick-decision-formulas)
 - [Boost Levels](#boost-levels)
+- [Strategy Tips & Best Practices](#strategy-tips--best-practices)
+- [Daily Spin Wheel & Mini-Games](#daily-spin-wheel--mini-games)
 - [Key References](#key-references)
 
 ---
@@ -109,6 +115,48 @@ Total Rent = Base Parcel Rent × Badge Multiplier × Boost Multiplier
 
 ---
 
+## Daily Login Bonus
+
+### Two Tiers: Free vs. Atlas Explorer Club
+
+The game rewards consecutive daily logins with increasing bonuses. There are two pricing tiers:
+
+| Day | Free | Explorer Club | Difference |
+|-----|------|---------------|-----------|
+| **1–6** | 1 AB | 90 AB | +89 AB |
+| **7** | 8 AB | 180 AB | +172 AB |
+| **8–13** | 1 AB | 90 AB | +89 AB |
+| **14** | 25 AB | 325 AB | +300 AB |
+| **15–29** | 1 AB | 90 AB | +89 AB |
+| **30** | 50 AB | 500 AB | +450 AB |
+| **31–59** | 1 AB | 90 AB | +89 AB |
+| **60** | 80 AB | 650 AB | +570 AB |
+| **61–89** | 1 AB | 90 AB | +89 AB |
+| **90** | 200 AB | 1,200 AB | +1,000 AB |
+
+### 90-Day Cycle Totals
+
+A full 90-day login streak gives you:
+
+| Tier | Total AB | Parcels | % More |
+|------|----------|---------|--------|
+| **Free** | 391 AB | 3.91 parcels | — |
+| **Explorer Club** | 5,375 AB | 53.75 parcels | **1,275% more** |
+
+**Cost of Explorer Club:** Typically $9.99/month or regional equivalent.
+
+**Value Calculation:**
+- Free players earn ~391 AB per 90 days = **$0.00 investment**
+- Explorer Club members earn ~5,375 AB per 90 days = **$9.99 investment**
+- **Net gain:** 4,984 AB extra per 90 days
+- **Cost per parcel:** $9.99 ÷ 49.84 parcels = **$0.20 per parcel** (vs. $4.99 for the cheapest pack: $0.0499 per AB)
+
+If you plan to play consistently for 90+ days, the Explorer Club offers strong value if you're already spending on the game.
+
+**Pro Tip:** The biggest bonuses are on **Day 7 (+172 AB difference), Day 14 (+300), Day 30 (+450), and Day 90 (+1,000)**. These bonus days are where Explorer Club pays for itself fastest.
+
+---
+
 ## Atlas Bucks (AB) & Pricing
 
 ### Parcel & Badge Costs
@@ -127,9 +175,77 @@ Total Rent = Base Parcel Rent × Badge Multiplier × Boost Multiplier
 | $39.99 | 900 | $0.0444 | 9 parcels |
 | $99.99 | 2,400 | $0.0417 | 24 parcels |
 
-**Best Value:** The $99.99 pack has the lowest cost per AB.
+**Best Value (In-App):** The $99.99 pack has the lowest cost per AB.
 
-### Rent Withdrawal Rules
+### Web App AB Packs (Better Value!)
+
+The web app offers significantly larger packs with better per-AB pricing:
+
+| Price | AB Gained | Cost per AB | Parcels | Savings vs. In-App |
+|-------|-----------|-------------|---------|-------------------|
+| $4.99 | 110 | $0.0454 | 1.1 | +10 AB |
+| $39.99 | 990 | $0.0404 | 9.9 | +90 AB |
+| $99.99 | 2,550 | $0.0392 | 25.5 | +150 AB |
+| $199.99 | 5,150 | $0.0388 | 51.5 | +2,750 AB |
+| $499.99 | 12,900 | $0.0388 | 129 | +12,500 AB |
+| $999.99 | 26,000 | $0.0385 | 260 | +26,000 AB |
+| $1,999.00 | 54,000 | $0.0370 | 540 | +54,000 AB |
+| $4,999.99 | 140,000 | $0.0357 | 1,400 | +140,000 AB |
+| $9,999.99 | 290,000 | $0.0345 | 2,900 | +290,000 AB |
+
+**💡 Pro Tip:** The web app packs are significantly cheaper per AB. For example:
+- In-app $99.99 = 2,400 AB ($0.0417 per AB)
+- Web app $99.99 = 2,550 AB ($0.0392 per AB) = **6% savings**
+- Web app $4,999.99 = 140,000 AB = **57 parcels worth!**
+
+---
+
+## Premium Subscriptions
+
+Atlas Earth offers **two separate subscription tiers**:
+
+### 1. Atlas Explorer Club
+
+**Pricing:**
+- Monthly: $49.99/month
+- Yearly: $549.99/year (8% discount per year)
+
+**Benefits:**
+- Free daily atlas bucks (see [Daily Login Bonus](#daily-login-bonus) section for exact amounts)
+
+**Value Analysis:**
+- 90-day cycle = 5,375 AB extra = 53.75 parcels
+- Cost: $49.99/month × 3 = $149.97 for 90 days
+- Cost per parcel: **$2.79 per parcel** (excellent value)
+
+### 2. Challenges Premium
+
+**Pricing:**
+- Monthly: $9.99/month
+- Yearly: $109.99/year (8% discount per year)
+
+**Benefits:**
+- Premium rewards for completing challenges
+- Rewards program starts June 1 (annually)
+
+**Value Analysis:**
+- Challenge rewards vary by season
+- Cost: $9.99/month
+- Best for dedicated players completing many challenges
+
+### Subscription Strategy
+
+**For Casual Players:**
+- Skip both subscriptions; rely on free daily login bonus and spin wheel
+
+**For Regular Players:**
+- Atlas Explorer Club ($49.99/month) pays for itself quickly (~3 parcels' worth of value per month)
+
+**For Dedicated Players:**
+- Consider both subscriptions (~$59.98/month) if you're already spending on AB packs
+- Both together are cheaper than buying mid-tier AB packs
+
+---
 
 - **Minimum withdrawal amount:** $5 USD
 - **How it works:** As you earn rent, it accumulates in your account. Once you reach $5 in total earned rent, you can withdraw it.
@@ -306,7 +422,100 @@ If you're aiming to become mayor, coordinate your badge purchase with your promo
 
 ---
 
-**Note:** The mathematics differs slightly outside the USA. Key differences:
+## Challenge Reward Ladder
+
+The **Challenge Reward Ladder** is a seasonal system where you earn rewards by completing challenges during a 90-day season. There are two tiers:
+
+### Free Tier vs. Premium Tier
+
+| Feature | Free | Season Pass Premium |
+|---------|------|-------------------|
+| **Challenges Needed** | 50 out of 120 | 120 out of 120 |
+| **Reward Types** | AB, Diamonds | AB, Diamonds, Badges, Legendary Parcel Upgrades |
+| **Cost** | $0 | $9.99/month or $109.99/year |
+
+### Typical Reward Examples (Varies by Season)
+
+**Free Tier Progression:**
+- Checkpoint 20: 5 AB (free) / 20 AB (premium)
+- Checkpoint 40: 6 diamonds (free) / 25 diamonds (premium)
+- Checkpoint 65: 10 AB (free) / 30 AB (premium)
+
+**Premium Tier Progression:**
+- Higher AB amounts at each checkpoint
+- Diamond rewards increase significantly
+- Exclusive rewards: Badges, Legendary Parcel Upgrades
+- Final reward tiers often include special items
+
+### Challenge Reward Strategy
+
+**Free Players:**
+- Complete challenges to earn ~100+ AB per season
+- Get some free diamonds from ladder progression
+- No time-gated advantage—all rewards are consistent
+
+**Season Pass Subscribers:**
+- Earn 3–5× more rewards than free players
+- Get exclusive badges and parcel upgrades
+- Season pass cost (~$10/month) breaks even if you earn 100+ AB in premium rewards
+
+**⚠️ Important Notes:**
+- **Atlas Bucks are non-transferable** — AB you purchase cannot be traded to other players
+- Subscribing to the Season Pass **resets your daily login bonus calendar** (restarts at Day 1)
+- Explorer Club membership can be identified by a **compass logo** next to player names
+- Season Pass subscriptions have **no visible indicator**—only you can see your own status
+
+---
+
+### Payout Odds
+
+The daily spin wheel offers various rewards. Each spin requires a diamond. Here are the official odds:
+
+| Reward | Odds | Probability |
+|--------|------|-------------|
+| 1 Diamond | 1 in 16 spins | 6.25% |
+| 1 AB | 1 in 2 spins | 50% |
+| 2 AB | 1 in 3 spins | 33.33% |
+| 6 AB | 1 in 25 spins | 4% |
+| 8 AB | 1 in 50 spins | 2% |
+| 15 AB | 1 in 100 spins | 1% |
+| 50 AB | 1 in 200 spins | 0.5% |
+
+### Expected Value Per Spin
+
+To calculate the average AB you can expect from a single spin:
+
+```
+EV = (0.5 × 1) + (0.3333 × 2) + (0.04 × 6) + (0.02 × 8) 
+     + (0.01 × 15) + (0.005 × 50) + (0.0625 × 1 Diamond)
+
+EV ≈ 1.57 AB per spin (plus occasional diamonds)
+```
+
+**In practice:** Expect approximately **1.5–2 AB per spin** on average, with occasional diamond drops offsetting the diamond cost.
+
+### Spin Strategy
+
+- **Free spins:** 3 spins per day without watching ads (costs 3 diamonds)
+- **Bonus spins:** 2 additional spins by watching ads (costs 2 more diamonds)
+- **Total:** Up to 5 spins per day (costs 5 diamonds)
+- **Diamond collection:** Collect diamonds when you're out and about—they're abundant
+- **Expected daily return:** 5 spins × ~1.57 AB = ~7.85 AB per day (before diamond drops)
+
+### Diamond Economy
+
+Since diamonds are abundant when exploring and you get 3 free spins daily, the spin wheel is a reliable source of passive AB income:
+
+- **Daily baseline:** ~1.5–2 AB per day from the 3 free spins
+- **With all 5 spins:** ~7.85 AB per day (if diamonds are available)
+- **Weekly earnings:** ~55 AB per week (5 spins/day × 7 days)
+- **Monthly earnings:** ~240 AB per month (assuming consistent play)
+
+This is equivalent to about **2.4 parcels per month** from spins alone.
+
+---
+
+## Non-USA Variations
 
 - Rent values and expected values may vary
 - Boost multiplier thresholds and ranges differ
@@ -355,7 +564,7 @@ If you're the mayor of a town, you earn 10% of all badge purchases in that town 
 
 This document is based on publicly available information and community research. Game mechanics may change. Always verify calculations with current in-game data. This is an unofficial guide and is not affiliated with Atlas Reality or Atlas Earth.
 
-**Last Updated:** April 2026
+**Last Updated:** April 2026 (Challenge Reward Ladder, Premium Subscriptions, Web App AB packs, Daily Login Bonus & Daily Spin Wheel odds added)
 
 ---
 
