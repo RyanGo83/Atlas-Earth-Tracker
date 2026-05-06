@@ -2,8 +2,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   CreditCard, DollarSign, TrendingUp, TrendingDown, Calendar, Trash2, 
-  PlusCircle, Zap, ShieldCheck, History, Info, PieChart, ShoppingBag, Clock, RefreshCw, Pencil, Save, X, ChevronDown
+  PlusCircle, Zap, ShieldCheck, History, Info, PieChart, ShoppingBag, Clock, RefreshCw, Pencil, Save, X, ChevronDown,
+  BarChart3, Target, Activity
 } from 'lucide-react';
+import { computeAllPeriods, projectionFromRentData, projectedForDays, type PeriodEarnings, type Confidence } from '../earnings';
 
 // --- CONSTANTS & TYPES ---
 const STORAGE_KEY = 'atlas_roi_data_v2';
@@ -45,6 +47,9 @@ export const ROITracker: React.FC = () => {
   const [rentData, setRentData] = useState<any>(null);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [showPurchaseGrid, setShowPurchaseGrid] = useState(true);
+  const [showComparisons, setShowComparisons] = useState(false);
+  const [showVsTable, setShowVsTable] = useState(true);
+  const [showScenarios, setShowScenarios] = useState(true);
   const isInitialized = useRef(false);
 
   // Load from local storage
@@ -164,6 +169,49 @@ export const ROITracker: React.FC = () => {
     };
   }, [data, rentData]);
 
+  // --- EARNINGS HISTORY (actuals from totalAccrued snapshots) ---
+  const periods = useMemo(() => {
+    const history = rentData?.history || [];
+    return computeAllPeriods(history);
+  }, [rentData]);
+
+  // --- PROJECTION (what your current setup SHOULD earn) ---
+  const projection = useMemo(() => {
+    if (!rentData) return null;
+    return projectionFromRentData(rentData);
+  }, [rentData]);
+
+  // Helper: format a confidence indicator
+  const confidenceMark = (c: Confidence | undefined): string => {
+    if (c === 'estimate') return '~';
+    if (c === 'partial') return '*';
+    return '';
+  };
+  const confidenceTitle = (p: PeriodEarnings | null): string => {
+    if (!p) return '';
+    if (p.confidence === 'exact') return `Exact — baseline from ${p.baselineDate}`;
+    if (p.confidence === 'estimate') return `Estimated — closest baseline from ${p.baselineDate} (${p.baselineAge} days off)`;
+    if (p.confidence === 'partial') return `Partial — only have data starting ${p.baselineDate}`;
+    return '';
+  };
+
+  // Helper: format a dollar value
+  const fmt = (n: number, decimals = 4): string => {
+    return n.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    });
+  };
+
+  // Momentum: compare last 30 days vs prior 30 days
+  const momentum = useMemo(() => {
+    if (!periods.last30 || !periods.prior30) return null;
+    if (periods.prior30.earned === 0) return null;
+    const change = periods.last30.earned - periods.prior30.earned;
+    const pct = (change / periods.prior30.earned) * 100;
+    return { change, pct };
+  }, [periods]);
+
   return (
     <div className="space-y-6">
       {/* --- DASHBOARD SUMMARY --- */}
@@ -218,6 +266,229 @@ export const ROITracker: React.FC = () => {
           </div>
           <div className="text-[9px] text-slate-500 mt-1 uppercase font-bold">Realized Return</div>
         </div>
+      </div>
+
+      {/* --- EARNINGS HISTORY (actuals) --- */}
+      <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2 flex-wrap gap-2">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Activity size={18} className="text-purple-400" /> Earnings History
+            <span className="text-[10px] text-slate-500 font-normal normal-case ml-1">actual from your snapshots</span>
+          </h3>
+          <button
+            onClick={() => setShowComparisons(!showComparisons)}
+            className={`text-xs font-bold px-3 py-1 rounded-md border transition-colors ${
+              showComparisons
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                : 'bg-slate-700 text-slate-400 border-slate-600 hover:text-white'
+            }`}
+          >
+            {showComparisons ? '✓ Comparisons' : 'Show comparisons'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Today */}
+          <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Today</div>
+            <div className="text-green-400 text-lg font-mono font-bold leading-none" title={confidenceTitle(periods.today)}>
+              {confidenceMark(periods.today?.confidence)}${periods.today ? fmt(periods.today.earned) : '—'}
+            </div>
+            <div className="text-[9px] text-slate-500 mt-1">&nbsp;</div>
+          </div>
+
+          {/* This Week */}
+          <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">This Week</div>
+            <div className="text-green-400 text-lg font-mono font-bold leading-none" title={confidenceTitle(periods.thisWeek)}>
+              {confidenceMark(periods.thisWeek?.confidence)}${periods.thisWeek ? fmt(periods.thisWeek.earned, 2) : '—'}
+            </div>
+            <div className="text-[9px] text-slate-500 mt-1">
+              {periods.thisWeek && periods.thisWeek.daysInPeriod > 0 ? `avg $${fmt(periods.thisWeek.dailyAverage)}/day` : '\u00A0'}
+            </div>
+          </div>
+
+          {/* This Month */}
+          <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">This Month</div>
+            <div className="text-blue-400 text-lg font-mono font-bold leading-none" title={confidenceTitle(periods.thisMonth)}>
+              {confidenceMark(periods.thisMonth?.confidence)}${periods.thisMonth ? fmt(periods.thisMonth.earned, 2) : '—'}
+            </div>
+            <div className="text-[9px] text-slate-500 mt-1">
+              {periods.thisMonth && periods.thisMonth.daysInPeriod > 0 ? `avg $${fmt(periods.thisMonth.dailyAverage)}/day` : '\u00A0'}
+            </div>
+          </div>
+
+          {/* This Year */}
+          <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">This Year</div>
+            <div className="text-yellow-400 text-lg font-mono font-bold leading-none" title={confidenceTitle(periods.thisYear)}>
+              {confidenceMark(periods.thisYear?.confidence)}${periods.thisYear ? fmt(periods.thisYear.earned, 2) : '—'}
+            </div>
+            <div className="text-[9px] text-slate-500 mt-1">
+              {periods.thisYear && periods.thisYear.daysInPeriod > 0 ? `avg $${fmt(periods.thisYear.dailyAverage)}/day` : '\u00A0'}
+            </div>
+          </div>
+        </div>
+
+        {/* Comparison Row (toggle) */}
+        {showComparisons && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 animate-fade-in">
+            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Last Month</div>
+              <div className="text-slate-300 text-base font-mono leading-none" title={confidenceTitle(periods.lastMonth)}>
+                {confidenceMark(periods.lastMonth?.confidence)}${periods.lastMonth ? fmt(periods.lastMonth.earned, 2) : '—'}
+              </div>
+              <div className="text-[9px] text-slate-500 mt-1">
+                {periods.lastMonth && periods.lastMonth.daysInPeriod > 0 ? `avg $${fmt(periods.lastMonth.dailyAverage)}/day` : '\u00A0'}
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Last 30 Days</div>
+              <div className="text-slate-300 text-base font-mono leading-none" title={confidenceTitle(periods.last30)}>
+                {confidenceMark(periods.last30?.confidence)}${periods.last30 ? fmt(periods.last30.earned, 2) : '—'}
+              </div>
+              <div className="text-[9px] text-slate-500 mt-1">
+                {periods.last30 && periods.last30.daysInPeriod > 0 ? `avg $${fmt(periods.last30.dailyAverage)}/day` : '\u00A0'}
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Prior 30 Days</div>
+              <div className="text-slate-400 text-base font-mono leading-none" title={confidenceTitle(periods.prior30)}>
+                {confidenceMark(periods.prior30?.confidence)}${periods.prior30 ? fmt(periods.prior30.earned, 2) : '—'}
+              </div>
+              <div className="text-[9px] text-slate-500 mt-1">previous month for compare</div>
+            </div>
+
+            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Momentum</div>
+              {momentum ? (
+                <>
+                  <div className={`text-base font-mono font-bold leading-none flex items-center gap-1 ${momentum.pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {momentum.pct >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                    {momentum.pct >= 0 ? '+' : ''}{momentum.pct.toFixed(1)}%
+                  </div>
+                  <div className="text-[9px] text-slate-500 mt-1">last 30 vs prior 30</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-slate-500 text-base font-mono leading-none">—</div>
+                  <div className="text-[9px] text-slate-500 mt-1">need 60+ days of data</div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Confidence legend (only shown if any period is non-exact) */}
+        {Object.values(periods).some(p => p && p.confidence !== 'exact') && (
+          <div className="mt-3 pt-3 border-t border-slate-700/50 text-[10px] text-slate-500">
+            <span className="font-mono text-slate-400">~</span> estimated &nbsp;
+            <span className="font-mono text-slate-400">*</span> partial — hover any value for details
+          </div>
+        )}
+      </div>
+
+      {/* --- PROJECTED VS ACTUAL --- */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+        <button
+          onClick={() => setShowVsTable(!showVsTable)}
+          className="w-full text-left p-6 flex items-center justify-between border-b border-slate-700 group hover:bg-slate-700/20 transition-colors"
+        >
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Target size={18} className="text-cyan-400" /> Projected vs Actual
+            <span className="text-[10px] text-slate-500 font-normal normal-case ml-1">how is your setup performing</span>
+          </h3>
+          <ChevronDown className={`text-slate-500 group-hover:text-white transition-transform ${showVsTable ? 'rotate-180' : ''}`} size={20} />
+        </button>
+        {showVsTable && (
+          <div className="overflow-x-auto animate-fade-in">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-900 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                <tr>
+                  <th className="p-3">Period</th>
+                  <th className="p-3 text-right">Projected</th>
+                  <th className="p-3 text-right">Actual</th>
+                  <th className="p-3 text-right hidden md:table-cell">Gap</th>
+                  <th className="p-3 text-right hidden md:table-cell">Daily Avg (actual)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {[
+                  { label: 'Today', p: periods.today, days: 1 },
+                  { label: 'This week', p: periods.thisWeek, days: 7 },
+                  { label: 'This month', p: periods.thisMonth, days: 30 },
+                  { label: 'This year', p: periods.thisYear, days: 365 }
+                ].map(({ label, p, days }) => {
+                  const projectedAmt = projection ? projectedForDays(projection, days) : 0;
+                  const actualAmt = p ? p.earned : 0;
+                  const gap = actualAmt - projectedAmt;
+                  const gapPct = projectedAmt > 0 ? (gap / projectedAmt) * 100 : 0;
+                  return (
+                    <tr key={label} className="hover:bg-slate-700/20 transition-colors">
+                      <td className="p-3 text-slate-300">{label}</td>
+                      <td className="p-3 text-right font-mono text-slate-400">${fmt(projectedAmt, days <= 7 ? 4 : 2)}</td>
+                      <td className="p-3 text-right font-mono text-white font-bold" title={confidenceTitle(p)}>
+                        {confidenceMark(p?.confidence)}${fmt(actualAmt, days <= 7 ? 4 : 2)}
+                      </td>
+                      <td className={`p-3 text-right font-mono hidden md:table-cell ${gap >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {projectedAmt > 0 ? `${gap >= 0 ? '+' : ''}${gapPct.toFixed(1)}%` : '—'}
+                      </td>
+                      <td className="p-3 text-right font-mono text-slate-400 hidden md:table-cell">
+                        {p && p.daysInPeriod > 0 ? `$${fmt(p.dailyAverage)}` : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="px-6 py-3 text-[10px] text-slate-500 bg-slate-900/30 border-t border-slate-700">
+              Projected = your current setup × time. Actual = real earnings from your snapshots. A negative gap usually means your boost ad hours, badge level, or parcel mix have changed during the period.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* --- EARNING SCENARIOS (moved from Rent tab) --- */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+        <button
+          onClick={() => setShowScenarios(!showScenarios)}
+          className="w-full text-left p-6 flex items-center justify-between border-b border-slate-700 group hover:bg-slate-700/20 transition-colors"
+        >
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <BarChart3 size={18} className="text-orange-400" /> Earning Scenarios
+            <span className="text-[10px] text-slate-500 font-normal normal-case ml-1">based on your current setup</span>
+          </h3>
+          <ChevronDown className={`text-slate-500 group-hover:text-white transition-transform ${showScenarios ? 'rotate-180' : ''}`} size={20} />
+        </button>
+        {showScenarios && (
+          <table className="w-full text-sm text-left animate-fade-in">
+            <thead className="bg-slate-900 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+              <tr>
+                <th className="p-3">Scenario</th>
+                <th className="p-3 text-right">Estimated Income</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700">
+              <tr>
+                <td className="p-3 text-slate-300">Normal Boosted Day</td>
+                <td className="p-3 text-right font-mono text-green-400 font-bold">${projection ? fmt(projection.dailyIncomeNormal, 5) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="p-3 text-slate-300">Super Rent Boost Day</td>
+                <td className="p-3 text-right font-mono text-yellow-400 font-bold">${projection ? fmt(projection.srbDailyIncome, 5) : '—'}</td>
+              </tr>
+              <tr>
+                <td className="p-3 text-slate-400">Projected Lifetime (1 Yr)</td>
+                <td className="p-3 text-right font-mono text-white font-bold">
+                  ${projection && rentData ? fmt((rentData.totalAccrued || 0) + projection.yearlyIncome, 2) : '—'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
