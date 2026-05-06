@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ComposedChart, Bar
 } from 'recharts';
-import { AlertTriangle, TrendingUp, Wallet, Settings2, History as HistoryIcon, Clock, Calendar, Landmark, Coins, LayoutDashboard, Activity, User, Save, Check } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Wallet, Settings2, History as HistoryIcon, Clock, Calendar, Landmark, Coins, LayoutDashboard, Activity, User, Save, Check, BarChart2 } from 'lucide-react';
 import { TimeRange, filterByTimeRange } from '../utils';
 
 // --- TYPES & INTERFACES ---
@@ -565,21 +565,48 @@ export const RentTracker: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 shadow-lg">
-             <table className="w-full text-sm text-left">
-                <thead className="bg-slate-900 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
-                   <tr>
-                      <th className="p-3">Earning Scenario</th>
-                      <th className="p-3 text-right">Estimated Income</th>
-                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700">
-                   <tr><td className="p-3">Normal Boosted Day</td><td className="p-3 text-right font-mono text-green-400 font-bold">${(calculatedStats.dailyIncomeNormal||0).toFixed(5)}</td></tr>
-                   <tr><td className="p-3">Super Rent Boost Day</td><td className="p-3 text-right font-mono text-yellow-400 font-bold">${(calculatedStats.srbDailyIncome||0).toFixed(5)}</td></tr>
-                   <tr><td className="p-3 text-slate-400">Projected Lifetime (1 Yr)</td><td className="p-3 text-right font-mono text-white font-bold">${(data.totalAccrued + (calculatedStats.yearlyIncome||0)).toFixed(2)}</td></tr>
-                </tbody>
-             </table>
+{/* MTD Earnings Reminder — links to Performance tab */}
+          <div className="bg-gradient-to-br from-cyan-900/20 to-slate-800 rounded-xl border border-cyan-500/30 shadow-lg p-4">
+             <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                   <div className="bg-cyan-500/20 p-2 rounded-lg text-cyan-400">
+                      <BarChart2 size={20} />
+                   </div>
+                   <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">This Month So Far</div>
+                      <div className="text-cyan-300 text-xl font-mono font-bold leading-tight" id="rent-mtd-display">
+                         ${(() => {
+                            const history = data.history || [];
+                            if (history.length === 0) return '—';
+                            // Inline MTD calc to avoid coupling
+                            const now = new Date();
+                            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                            const cutoff = new Date(monthStart.getTime() - 1);
+                            // Sort by date asc
+                            const sorted = [...history].sort((a, b) => 
+                               new Date(a.date + 'T00:00:00').getTime() - new Date(b.date + 'T00:00:00').getTime()
+                            );
+                            // Latest snapshot before this month
+                            let baseline = null;
+                            for (const h of sorted) {
+                               if (new Date(h.date + 'T00:00:00').getTime() <= cutoff.getTime()) baseline = h;
+                            }
+                            // Latest snapshot overall
+                            const latest = sorted[sorted.length - 1];
+                            if (!latest) return '—';
+                            const baselineAccrued = baseline ? baseline.totalAccrued : sorted[0].totalAccrued;
+                            const earned = Math.max(0, latest.totalAccrued - baselineAccrued);
+                            return earned.toFixed(2);
+                         })()}
+                      </div>
+                   </div>
+                </div>
+                <div className="text-xs text-slate-400 max-w-xs">
+                   See full earnings history, projected vs actual, and scenarios on the <span className="text-cyan-400 font-bold">📊 Performance</span> tab.
+                </div>
+             </div>
           </div>
+		  
         </div>
       </div>
     </div>
