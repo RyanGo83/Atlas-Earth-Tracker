@@ -20,7 +20,7 @@ export enum Tab {
   EARTH = 'EARTH',
   MINIGAME = 'MINIGAME',
   STRATEGY = 'STRATEGY',
-  ROI = 'ROI'
+  ROI = 'ROI'  // Displayed as "Performance" — kept as ROI internally to preserve data keys
 }
 
 // Keys used across the app
@@ -447,7 +447,7 @@ const App: React.FC = () => {
 
             <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
 
-            {/* Group 3: Strategy & ROI */}
+            {/* Group 3: Strategy & Performance */}
             <NavButton
               isActive={activeTab === Tab.STRATEGY}
               onClick={() => setActiveTab(Tab.STRATEGY)}
@@ -457,7 +457,7 @@ const App: React.FC = () => {
             <NavButton
               isActive={activeTab === Tab.ROI}
               onClick={() => setActiveTab(Tab.ROI)}
-              label="📈 ROI"
+              label="📊 Performance"
               activeColor="bg-cyan-500 text-white"
             />
 
