@@ -109,12 +109,15 @@ export const RentTracker: React.FC = () => {
           });
         }
 
-        setData(prev => ({ ...prev, ...parsed }));
+setData(prev => ({ ...prev, ...parsed }));
       } catch (e) {
         console.error("Failed to load rent data", e);
       }
     }
-    isInitialized.current = true;
+    // Mark initialized AFTER this render cycle commits, so the save effect
+    // never fires against the empty default state and overwrites loaded data.
+    const t = setTimeout(() => { isInitialized.current = true; }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   const getBadgeMultiplier = (count: number) => {
