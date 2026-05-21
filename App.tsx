@@ -8,6 +8,7 @@ import { EarthTracker } from './components/EarthTracker';
 import { MiniGameTracker } from './components/MiniGameTracker';
 import { StrategyTab } from './components/StrategyTab';
 import { ROITracker } from './components/ROITracker';
+import { LeaderboardsTracker } from './components/LeaderboardsTracker';
 import { Download, Upload, User, X, Save, ClipboardCopy, ClipboardPaste, Check } from 'lucide-react';
 
 // --- TYPES ---
@@ -20,7 +21,8 @@ export enum Tab {
   EARTH = 'EARTH',
   MINIGAME = 'MINIGAME',
   STRATEGY = 'STRATEGY',
-  ROI = 'ROI'  // Displayed as "Performance" — kept as ROI internally to preserve data keys
+  ROI = 'ROI',  // Displayed as "Performance" — kept as ROI internally to preserve data keys
+  LEADERBOARDS = 'LEADERBOARDS'
 }
 
 // Keys used across the app
@@ -290,7 +292,8 @@ const App: React.FC = () => {
       case Tab.EARTH: return <EarthTracker key={refreshKey} />;
       case Tab.MINIGAME: return <MiniGameTracker key={refreshKey} />;
       case Tab.STRATEGY: return <StrategyTab key={refreshKey} />;
-      case Tab.ROI: return <ROITracker key={refreshKey} />;
+	  case Tab.ROI: return <ROITracker key={refreshKey} />;
+      case Tab.LEADERBOARDS: return <LeaderboardsTracker key={refreshKey} />;
       default: return <RentTracker key={refreshKey} />;
     }
   };
@@ -463,7 +466,14 @@ const App: React.FC = () => {
 
             <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
 
-            {/* Group 4: Location Trackers */}
+           {/* Group 4: Location Trackers */}
+            <NavButton
+              isActive={activeTab === Tab.LEADERBOARDS}
+              onClick={() => setActiveTab(Tab.LEADERBOARDS)}
+              label="📍 Leaderboards"
+              activeColor="bg-cyan-500 text-white"
+            />
+            <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
             <NavButton
               isActive={activeTab === Tab.TOWN}
               onClick={() => setActiveTab(Tab.TOWN)}
