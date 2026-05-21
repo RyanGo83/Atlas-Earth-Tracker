@@ -70,7 +70,7 @@ export const CountryTracker: React.FC = () => {
     } else {
       setData({ countries: { 'USA': { entries: [], lastUpdated: new Date().toISOString() } }, currentCountry: 'USA' });
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   }, []);
 
   useEffect(() => {

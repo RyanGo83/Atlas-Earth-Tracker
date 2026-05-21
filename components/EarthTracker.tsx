@@ -70,7 +70,7 @@ export const EarthTracker: React.FC = () => {
     } else {
       setData({ regions: { 'Global': { entries: [], lastUpdated: new Date().toISOString() } }, currentRegion: 'Global' });
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   }, []);
 
   useEffect(() => {

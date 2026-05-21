@@ -86,7 +86,7 @@ export const StateTracker: React.FC = () => {
     } else {
       setData({ states: baseStates, currentState: 'Florida' });
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   }, []);
 
   useEffect(() => {

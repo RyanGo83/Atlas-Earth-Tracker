@@ -70,7 +70,7 @@ export const ROITracker: React.FC = () => {
         console.error("Failed to load ROI data", e);
       }
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
 
     const savedRent = localStorage.getItem(RENT_STORAGE_KEY);
     if (savedRent) {

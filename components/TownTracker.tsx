@@ -187,7 +187,7 @@ export const TownTracker: React.FC = () => {
         currentTown: 'St. Petersburg' 
       });
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   }, []);
 
   useEffect(() => {

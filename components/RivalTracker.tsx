@@ -237,7 +237,7 @@ export const RivalTracker: React.FC = () => {
     setMayorOf(newMayorMap);
     setGovernorOf(newGovernorMap);
     setData(loadedData);
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   };
 
   useEffect(() => {

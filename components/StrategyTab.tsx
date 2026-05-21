@@ -59,7 +59,7 @@ export const StrategyTab: React.FC = () => {
         console.error("Failed to load pinned towns", e);
       }
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   }, []);
 
   // Save pinned towns whenever state changes

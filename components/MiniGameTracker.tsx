@@ -29,7 +29,7 @@ export const MiniGameTracker: React.FC = () => {
     if (saved) {
       try { setData(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
-    isInitialized.current = true;
+    setTimeout(() => { isInitialized.current = true; }, 0);
   }, []);
 
   useEffect(() => {
