@@ -125,7 +125,13 @@ export const LeaderboardsTracker: React.FC = () => {
       return getMergedLeaderboard(townData, countryData?.countries || null, 'COUNTRY', scopeValue);
     }
     if (scope === 'WORLD') {
-      return getMergedLeaderboard(townData, earthData?.regions || null, 'WORLD');
+      return getMergedLeaderboard(
+        townData,
+        earthData?.regions || null,
+        'WORLD',
+        undefined,
+        countryData?.countries || null
+      );
     }
     return [];
   }, [scope, scopeValue, townData, stateData, countryData, earthData]);
@@ -304,9 +310,9 @@ export const LeaderboardsTracker: React.FC = () => {
                           {typeof entry.rank === 'number' && (
                             <span
                               className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold"
-                              title="Rank reported directly from the game leaderboard"
+                              title="Rank reported directly from the in-game leaderboard"
                             >
-                              🎮 game #{entry.rank}
+                              🏆 #{entry.rank}
                             </span>
                           )}
                         </div>

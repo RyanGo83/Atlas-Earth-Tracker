@@ -181,11 +181,54 @@ const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
  * @param scope        'STATE' | 'COUNTRY' | 'WORLD'
  * @param scopeValue   For STATE/COUNTRY: the location name (e.g., "Florida"). Omit for WORLD.
  */
+/**
+ * For World scope: build a per-player "reported" map by summing each player's
+ * latest reported total across ALL countries they appear in.
+ * Used as a fallback when the Earth tracker has no direct World leaderboard data.
+ */
+const buildWorldReportedFromCountries = (
+  countryData: ReportedDataMap | null
+): Record<string, ReportedEntry> => {
+  const out: Record<string, ReportedEntry> = {};
+  if (!countryData) return out;
+
+  Object.values(countryData).forEach(countryStore => {
+    const latest = latestPerPlayer(countryStore.entries || []);
+    Object.entries(latest).forEach(([name, entry]) => {
+      if (!out[name]) {
+        // First country we've seen this player in
+        out[name] = { name, parcels: entry.parcels, date: entry.date };
+      } else {
+        // Player appears in multiple countries — sum the parcels,
+        // keep the most recent date, drop rank (a summed total has no single rank)
+        out[name] = {
+          name,
+          parcels: out[name].parcels + entry.parcels,
+          date: new Date(entry.date) > new Date(out[name].date) ? entry.date : out[name].date
+        };
+      }
+    });
+  });
+  return out;
+};
+
+/**
+ * Build the merged leaderboard for a given scope.
+ *
+ * @param townsData    The current Town tracker data (for rollup math)
+ * @param reportedData The legacy State/Country/Earth tracker's entries map for this scope
+ *                     (e.g., stateData.states for STATE scope). Pass null if no reported data.
+ * @param scope        'STATE' | 'COUNTRY' | 'WORLD'
+ * @param scopeValue   For STATE/COUNTRY: the location name (e.g., "Florida"). Omit for WORLD.
+ * @param countryDataForWorld  WORLD scope only: the country tracker's data map, used as a
+ *                     fallback reported source when the Earth tracker is empty.
+ */
 export const getMergedLeaderboard = (
   townsData: AllTownsDataLite | null,
   reportedData: ReportedDataMap | null,
   scope: Scope,
-  scopeValue?: string
+  scopeValue?: string,
+  countryDataForWorld?: ReportedDataMap | null
 ): MergedPlayerEntry[] => {
   // --- Step 1: Get identified rollup for this scope ---
   let identified: PlayerRollup = {};
@@ -201,17 +244,25 @@ export const getMergedLeaderboard = (
 
   // --- Step 2: Get reported entries for this scope ---
   let reportedMap: Record<string, ReportedEntry> = {};
-  if (reportedData) {
-    // For WORLD scope, the user might have stored under various keys ("World", "Earth", "Global").
-    // Try a few common ones; fall back to the first key if the store has only one location.
-    let lookupKey = scopeValue;
-    if (scope === 'WORLD') {
+
+  if (scope === 'WORLD') {
+    // Priority 1: a real World leaderboard from the Earth tracker, if it has data
+    if (reportedData) {
       const candidates = ['World', 'Earth', 'Global', 'world', 'earth'];
-      lookupKey = candidates.find(k => reportedData[k]) ||
-                  Object.keys(reportedData)[0];
+      const lookupKey = candidates.find(k => reportedData[k] && (reportedData[k].entries || []).length > 0)
+                        || Object.keys(reportedData).find(k => (reportedData[k].entries || []).length > 0);
+      if (lookupKey && reportedData[lookupKey]) {
+        reportedMap = latestPerPlayer(reportedData[lookupKey].entries || []);
+      }
     }
-    if (lookupKey && reportedData[lookupKey]) {
-      reportedMap = latestPerPlayer(reportedData[lookupKey].entries || []);
+    // Priority 2: fall back to summed country totals (per-player across all countries)
+    if (Object.keys(reportedMap).length === 0) {
+      reportedMap = buildWorldReportedFromCountries(countryDataForWorld || null);
+    }
+  } else {
+    // STATE / COUNTRY: direct lookup by scopeValue
+    if (reportedData && scopeValue && reportedData[scopeValue]) {
+      reportedMap = latestPerPlayer(reportedData[scopeValue].entries || []);
     }
   }
 
