@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapPin, Map, Globe, Trophy, ChevronDown, Crown, User, Users, LineChart as LineChartIcon, Plus, X, Info } from 'lucide-react';
+import { MapPin, Map, Globe, Trophy, ChevronDown, Crown, User, Users, LineChart as LineChartIcon, Plus, X, Info, Pencil, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getMergedLeaderboard, listScopeValues, type MergedPlayerEntry } from '../leaderboardMerge';
 
@@ -53,6 +53,8 @@ export const LeaderboardsTracker: React.FC = () => {
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formLocation, setFormLocation] = useState('');
   const [infoNote, setInfoNote] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   // --- LOAD DATA (reusable) ---
   const loadAllData = () => {
@@ -181,35 +183,109 @@ export const LeaderboardsTracker: React.FC = () => {
     '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1'
   ];
 
-  // Per-player observation history at the current scope
+  // Per-player observation history at the current scope.
+  // TOWN: direct town entries.
+  // STATE/COUNTRY/WORLD: source-aware — Reported players use their direct entries;
+  //   Identified players get their history reconstructed by summing town parcels over time.
   const scopeHistory = useMemo(() => {
     const hist: Record<string, Array<{ date: string; parcels: number }>> = {};
-    const addEntries = (entries: any[]) => {
-      (entries || []).forEach((e: any) => {
+
+    // --- TOWN scope: direct entries ---
+    if (scope === 'TOWN') {
+      const town = townData?.towns?.[scopeValue];
+      (town?.entries || []).forEach((e: any) => {
         const name = (e.name || '').trim();
         if (!name || !e.date) return;
         if (!hist[name]) hist[name] = [];
         hist[name].push({ date: e.date, parcels: e.parcels || 0 });
       });
-    };
-
-    if (scope === 'TOWN' && townData?.towns?.[scopeValue]) {
-      addEntries(townData.towns[scopeValue].entries);
-    } else if (scope === 'STATE' && stateData?.states?.[scopeValue]) {
-      addEntries(stateData.states[scopeValue].entries);
-    } else if (scope === 'COUNTRY' && countryData?.countries?.[scopeValue]) {
-      addEntries(countryData.countries[scopeValue].entries);
-    } else if (scope === 'WORLD') {
-      const regions = earthData?.regions || {};
-      Object.values(regions).forEach((r: any) => addEntries(r.entries));
+      Object.keys(hist).forEach(n =>
+        hist[n].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      );
+      return hist;
     }
 
-    // Sort each player's history by date ascending
-    Object.keys(hist).forEach(name => {
-      hist[name].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // --- STATE / COUNTRY / WORLD ---
+
+    // (a) Reported history: direct entries from the relevant tracker
+    const reportedHist: Record<string, Array<{ date: string; parcels: number }>> = {};
+    const addReported = (entries: any[]) => {
+      (entries || []).forEach((e: any) => {
+        const name = (e.name || '').trim();
+        if (!name || !e.date) return;
+        if (!reportedHist[name]) reportedHist[name] = [];
+        reportedHist[name].push({ date: e.date, parcels: e.parcels || 0 });
+      });
+    };
+    if (scope === 'STATE' && stateData?.states?.[scopeValue]) {
+      addReported(stateData.states[scopeValue].entries);
+    } else if (scope === 'COUNTRY' && countryData?.countries?.[scopeValue]) {
+      addReported(countryData.countries[scopeValue].entries);
+    } else if (scope === 'WORLD') {
+      const regions = earthData?.regions || {};
+      Object.values(regions).forEach((r: any) => addReported(r.entries));
+    }
+
+    // (b) Identified history: sum town parcels over time across the towns in scope
+    const towns = townData?.towns || {};
+    let scopeTowns: Array<[string, any]> = [];
+    if (scope === 'STATE') {
+      scopeTowns = Object.entries(towns).filter(([, t]: any) => t.state === scopeValue);
+    } else if (scope === 'COUNTRY') {
+      scopeTowns = Object.entries(towns).filter(([, t]: any) => t.country === scopeValue);
+    } else if (scope === 'WORLD') {
+      scopeTowns = Object.entries(towns);
+    }
+
+    // Gather each player's entries grouped by town
+    const byPlayerTown: Record<string, Record<string, Array<{ date: string; parcels: number }>>> = {};
+    scopeTowns.forEach(([townName, town]: any) => {
+      (town.entries || []).forEach((e: any) => {
+        const name = (e.name || '').trim();
+        if (!name || !e.date) return;
+        if (!byPlayerTown[name]) byPlayerTown[name] = {};
+        if (!byPlayerTown[name][townName]) byPlayerTown[name][townName] = [];
+        byPlayerTown[name][townName].push({ date: e.date, parcels: e.parcels || 0 });
+      });
     });
+
+    const identifiedHist: Record<string, Array<{ date: string; parcels: number }>> = {};
+    Object.entries(byPlayerTown).forEach(([player, townMap]) => {
+      // All dates this player was observed in any scope town
+      const dateSet = new Set<string>();
+      Object.values(townMap).forEach(arr => arr.forEach(pt => dateSet.add(pt.date)));
+      const dates = Array.from(dateSet).sort(
+        (a, b) => new Date(a).getTime() - new Date(b).getTime()
+      );
+      identifiedHist[player] = dates.map(date => {
+        const dTime = new Date(date).getTime();
+        let total = 0;
+        Object.values(townMap).forEach(arr => {
+          // Player's latest parcel count in this town on or before `date`
+          let v = 0;
+          arr.forEach(pt => {
+            if (new Date(pt.date).getTime() <= dTime) v = pt.parcels;
+          });
+          total += v;
+        });
+        return { date, parcels: total };
+      });
+    });
+
+    // (c) Per player, choose the series matching their leaderboard source
+    leaderboard.forEach(entry => {
+      if (entry.source === 'identified' && identifiedHist[entry.name]) {
+        hist[entry.name] = identifiedHist[entry.name];
+      } else if (reportedHist[entry.name]) {
+        hist[entry.name] = reportedHist[entry.name];
+      } else if (identifiedHist[entry.name]) {
+        // Fallback: reported player with no reported history but town data exists
+        hist[entry.name] = identifiedHist[entry.name];
+      }
+    });
+
     return hist;
-  }, [scope, scopeValue, townData, stateData, countryData, earthData]);
+  }, [scope, scopeValue, townData, stateData, countryData, earthData, leaderboard]);
 
   // Reset player selection to default (top 3 + you) whenever the board changes
   useEffect(() => {
@@ -231,16 +307,22 @@ export const LeaderboardsTracker: React.FC = () => {
     return null;
   };
 
-  // Build recharts-friendly data: one row per date, carry-forward each player's value
+  // Build recharts-friendly data. For each player, two series:
+  //   <name>          — solid line, real observed data (up to their last observation)
+  //   <name>__proj    — dashed line, carried forward from last observation to today
+  // (parcels can't go down, so the carried-forward value is a guaranteed floor)
   const chartData = useMemo(() => {
     const selected = Array.from(selectedPlayers);
     if (selected.length === 0) return [];
 
-    // Union of all dates across selected players
+    const today = new Date().toISOString().split('T')[0];
+
+    // Union of all dates across selected players, plus today
     const dateSet = new Set<string>();
     selected.forEach(p => {
       (scopeHistory[p] || []).forEach(pt => dateSet.add(pt.date));
     });
+    dateSet.add(today);
     let dates = Array.from(dateSet).sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
@@ -248,21 +330,46 @@ export const LeaderboardsTracker: React.FC = () => {
     // Apply time filter
     const cutoff = getRangeCutoff(chartRange);
     if (cutoff) {
+      // Include the cutoff date itself as an anchor point, so a player whose last
+      // real observation is before the cutoff still gets a (carried-forward) line
+      // across the visible range instead of a lone dot.
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      dates.push(cutoffStr);
+      dates = Array.from(new Set(dates)).sort(
+        (a, b) => new Date(a).getTime() - new Date(b).getTime()
+      );
       dates = dates.filter(d => new Date(d + 'T00:00:00').getTime() >= cutoff.getTime());
     }
 
     return dates.map(date => {
       const row: any = { date };
+      const dTime = new Date(date).getTime();
       selected.forEach(p => {
         const h = scopeHistory[p] || [];
-        // Latest entry on or before this date (carry-forward for a continuous line)
+        if (h.length === 0) return;
+
+        // Last real observation date for this player
+        const lastObsTime = new Date(h[h.length - 1].date).getTime();
+
+        // Carry-forward value: latest entry on or before this date
         let val: number | undefined;
+        let hasExactPoint = false;
         for (const pt of h) {
-          if (new Date(pt.date).getTime() <= new Date(date).getTime()) {
-            val = pt.parcels;
-          }
+          const ptTime = new Date(pt.date).getTime();
+          if (ptTime <= dTime) val = pt.parcels;
+          if (ptTime === dTime) hasExactPoint = true;
         }
-        if (val !== undefined) row[p] = val;
+        if (val === undefined) return;
+
+        if (dTime <= lastObsTime) {
+          // Within real-data range → solid line
+          row[p] = val;
+          // Bridge point: at the last observation, also start the projection series
+          if (dTime === lastObsTime) row[`${p}__proj`] = val;
+        } else {
+          // Past the last observation → dashed projection line only
+          row[`${p}__proj`] = val;
+        }
       });
       return row;
     });
@@ -284,8 +391,43 @@ export const LeaderboardsTracker: React.FC = () => {
     }
   }, [scope, scopeValue]);
 
-  // --- ADD ENTRY ---
-  const handleAddEntry = () => {
+  // --- STORE LOCATION HELPER ---
+  // Returns where the current scope's data lives in localStorage
+  const getStoreInfo = (locOverride?: string) => {
+    if (scope === 'TOWN') return { key: TOWN_KEY, topKey: 'towns', loc: locOverride ?? scopeValue };
+    if (scope === 'STATE') return { key: STATE_KEY, topKey: 'states', loc: locOverride ?? scopeValue };
+    if (scope === 'COUNTRY') return { key: COUNTRY_KEY, topKey: 'countries', loc: locOverride ?? scopeValue };
+    // WORLD — single region
+    const regions = earthData?.regions || {};
+    const regionKey = Object.keys(regions)[0] || 'World';
+    return { key: EARTH_KEY, topKey: 'regions', loc: regionKey };
+  };
+
+  // Raw per-player entry lists at the current scope (for the expandable edit/delete view)
+  const rawEntriesByPlayer = useMemo(() => {
+    let entries: any[] = [];
+    if (scope === 'TOWN') entries = townData?.towns?.[scopeValue]?.entries || [];
+    else if (scope === 'STATE') entries = stateData?.states?.[scopeValue]?.entries || [];
+    else if (scope === 'COUNTRY') entries = countryData?.countries?.[scopeValue]?.entries || [];
+    else if (scope === 'WORLD') {
+      const regions = earthData?.regions || {};
+      Object.values(regions).forEach((r: any) => { entries = entries.concat(r.entries || []); });
+    }
+    const map: Record<string, any[]> = {};
+    entries.forEach((e: any) => {
+      const name = (e.name || '').trim();
+      if (!name) return;
+      if (!map[name]) map[name] = [];
+      map[name].push(e);
+    });
+    Object.keys(map).forEach(n =>
+      map[n].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    );
+    return map;
+  }, [scope, scopeValue, townData, stateData, countryData, earthData]);
+
+  // --- ADD / UPDATE ENTRY ---
+  const handleSaveEntry = () => {
     const name = formName.trim().toUpperCase();
     const parcels = parseInt(formParcels);
     if (!name) { alert('Enter a player name.'); return; }
@@ -293,70 +435,104 @@ export const LeaderboardsTracker: React.FC = () => {
     if (!formDate) { alert('Pick a date.'); return; }
 
     const rank = formRank ? parseInt(formRank) : null;
-    const newEntry = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-      rank,
-      parcels,
-      date: formDate
-    };
 
-    // Helper: append an entry into a { [topKey]: { [loc]: { entries, lastUpdated } } } store
-    const writeToStore = (storageKey: string, topKey: string, loc: string, extraDefaults: any = {}) => {
-      let raw: any;
-      try {
-        raw = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      } catch {
-        raw = {};
-      }
-      if (!raw[topKey]) raw[topKey] = {};
-      const existing = raw[topKey][loc];
-      raw[topKey][loc] = {
-        ...extraDefaults,
-        ...(existing || {}),
-        entries: [...((existing && existing.entries) || []), newEntry],
-        lastUpdated: new Date().toISOString()
-      };
-      localStorage.setItem(storageKey, JSON.stringify(raw));
-    };
+    // Determine location: edit mode locks to current scope; add mode uses the form field
+    const addLoc = scope === 'WORLD' ? '' : formLocation.trim();
+    if (scope !== 'WORLD' && !addLoc) {
+      alert(`Enter a ${SCOPE_CONFIG[scope].label.toLowerCase()} name.`);
+      return;
+    }
 
-    if (scope === 'WORLD') {
-      // Write into the single Earth region (reuse existing key, or create 'World')
-      let raw: any;
-      try { raw = JSON.parse(localStorage.getItem(EARTH_KEY) || '{}'); } catch { raw = {}; }
-      if (!raw.regions) raw.regions = {};
-      const regionKey = Object.keys(raw.regions)[0] || 'World';
-      const existing = raw.regions[regionKey];
-      raw.regions[regionKey] = {
-        ...(existing || {}),
-        entries: [...((existing && existing.entries) || []), newEntry],
-        lastUpdated: new Date().toISOString()
-      };
-      if (!raw.currentRegion) raw.currentRegion = regionKey;
-      localStorage.setItem(EARTH_KEY, JSON.stringify(raw));
+    const { key, topKey, loc } = editingEntryId
+      ? getStoreInfo()                       // edit: current location
+      : getStoreInfo(scope === 'WORLD' ? undefined : addLoc); // add: form location
+
+    let raw: any;
+    try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch { raw = {}; }
+    if (!raw[topKey]) raw[topKey] = {};
+
+    const existing = raw[topKey][loc];
+    let entries: any[] = (existing && existing.entries) ? [...existing.entries] : [];
+
+    if (editingEntryId) {
+      // Update the matching entry, preserving its id
+      entries = entries.map(e =>
+        String(e.id) === String(editingEntryId)
+          ? { ...e, name, rank, parcels, date: formDate }
+          : e
+      );
     } else {
-      const loc = formLocation.trim();
-      if (!loc) { alert(`Enter a ${SCOPE_CONFIG[scope].label.toLowerCase()} name.`); return; }
-      if (scope === 'TOWN') {
-        // New towns default to USA so rollups work; preserves state/country if town exists
-        writeToStore(TOWN_KEY, 'towns', loc, { country: 'USA' });
-      } else if (scope === 'STATE') {
-        writeToStore(STATE_KEY, 'states', loc);
-      } else if (scope === 'COUNTRY') {
-        writeToStore(COUNTRY_KEY, 'countries', loc);
-      }
+      // Append a new entry
+      entries.push({
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name, rank, parcels, date: formDate
+      });
     }
 
-    // Refresh data, jump to the location just edited, reset form
+    // Town objects keep their state/country tags; new towns default to USA
+    const extraDefaults = scope === 'TOWN' ? { country: 'USA' } : {};
+    raw[topKey][loc] = {
+      ...extraDefaults,
+      ...(existing || {}),
+      entries,
+      lastUpdated: new Date().toISOString()
+    };
+    if (scope === 'WORLD' && !raw.currentRegion) raw.currentRegion = loc;
+    localStorage.setItem(key, JSON.stringify(raw));
+
     loadAllData();
-    if (scope !== 'WORLD' && formLocation.trim() && formLocation.trim() !== scopeValue) {
-      setScopeValue(formLocation.trim());
+
+    // Add mode: jump to the location just edited
+    if (!editingEntryId && scope !== 'WORLD' && addLoc && addLoc !== scopeValue) {
+      setScopeValue(addLoc);
     }
+
+    const wasEdit = !!editingEntryId;
+    cancelEdit();
+    setInfoNote(
+      wasEdit
+        ? `Updated ${name} (${fmt(parcels)} parcels).`
+        : `Added ${name} (${fmt(parcels)} parcels)${scope !== 'WORLD' ? ` to ${addLoc}` : ''}.`
+    );
+  };
+
+  // --- DELETE ENTRY ---
+  const handleDeleteEntry = (entryId: string) => {
+    if (!window.confirm('Delete this entry? This cannot be undone.')) return;
+    const { key, topKey, loc } = getStoreInfo();
+    let raw: any;
+    try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch { raw = {}; }
+    if (raw[topKey] && raw[topKey][loc] && raw[topKey][loc].entries) {
+      raw[topKey][loc] = {
+        ...raw[topKey][loc],
+        entries: raw[topKey][loc].entries.filter((e: any) => String(e.id) !== String(entryId)),
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem(key, JSON.stringify(raw));
+    }
+    loadAllData();
+    if (String(editingEntryId) === String(entryId)) cancelEdit();
+    setInfoNote('Entry deleted.');
+  };
+
+  // --- EDIT MODE ---
+  const startEdit = (rawEntry: any) => {
+    setEditingEntryId(String(rawEntry.id));
+    setFormName(rawEntry.name || '');
+    setFormParcels(String(rawEntry.parcels ?? ''));
+    setFormRank(rawEntry.rank != null ? String(rawEntry.rank) : '');
+    setFormDate(rawEntry.date || new Date().toISOString().split('T')[0]);
+    setShowAddForm(true);
+  };
+
+  const cancelEdit = () => {
+    setEditingEntryId(null);
     setFormName('');
     setFormParcels('');
     setFormRank('');
-    setInfoNote(`Added ${name} (${fmt(parcels)} parcels)${scope !== 'WORLD' ? ` to ${formLocation.trim()}` : ''}.`);
+    setFormDate(new Date().toISOString().split('T')[0]);
   };
+
 
   return (
     <div className="space-y-6">
@@ -410,22 +586,25 @@ export const LeaderboardsTracker: React.FC = () => {
         </div>
       </div>
 
-      {/* --- ADD ENTRY --- */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+      {/* --- ADD / EDIT ENTRY --- */}
+      <div className={`bg-slate-800 rounded-xl border shadow-lg overflow-hidden ${editingEntryId ? 'border-amber-500/50' : 'border-slate-700'}`}>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="w-full text-left px-4 py-3 flex items-center justify-between group hover:bg-slate-700/20 transition-colors"
         >
           <span className="text-sm font-bold text-white flex items-center gap-2">
-            <Plus size={16} className="text-green-400" />
-            Add a {scopeLabel} observation
+            {editingEntryId ? (
+              <><Pencil size={16} className="text-amber-400" /> Editing an entry</>
+            ) : (
+              <><Plus size={16} className="text-green-400" /> Add a {scopeLabel} observation</>
+            )}
           </span>
           <ChevronDown className={`text-slate-500 group-hover:text-white transition-transform ${showAddForm ? 'rotate-180' : ''}`} size={18} />
         </button>
         {showAddForm && (
           <div className="border-t border-slate-700 p-4 animate-fade-in">
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-              {/* Location (not shown for World) */}
+              {/* Location (not shown for World; locked during edit) */}
               {scope !== 'WORLD' && (
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
@@ -433,11 +612,12 @@ export const LeaderboardsTracker: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={formLocation}
+                    value={editingEntryId ? scopeValue : formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                     list="loc-options"
+                    disabled={!!editingEntryId}
                     placeholder={`e.g. ${scope === 'TOWN' ? 'Tampa' : scope === 'STATE' ? 'Florida' : 'USA'}`}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-cyan-500"
+                    className={`w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-cyan-500 ${editingEntryId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                   <datalist id="loc-options">
                     {scopeOptions.map(o => <option key={o} value={o} />)}
@@ -484,18 +664,32 @@ export const LeaderboardsTracker: React.FC = () => {
                 />
               </div>
               <div className={scope === 'WORLD' ? '' : 'md:col-span-6'}>
-                <button
-                  onClick={handleAddEntry}
-                  className="w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold px-6 py-2 rounded text-sm transition-colors"
-                >
-                  Add Entry
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveEntry}
+                    className={`w-full md:w-auto text-white font-bold px-6 py-2 rounded text-sm transition-colors ${
+                      editingEntryId ? 'bg-amber-600 hover:bg-amber-500' : 'bg-green-600 hover:bg-green-500'
+                    }`}
+                  >
+                    {editingEntryId ? 'Update Entry' : 'Add Entry'}
+                  </button>
+                  {editingEntryId && (
+                    <button
+                      onClick={cancelEdit}
+                      className="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold px-4 py-2 rounded text-sm transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <div className="text-[10px] text-slate-500 mt-3">
-              {scope === 'WORLD'
-                ? 'World entries are stored in the global leaderboard. Rank is the in-game world rank if you have it.'
-                : `Adds an observation at ${scopeLabel.toLowerCase()} scope. Type a new ${scopeLabel.toLowerCase()} name to start tracking it. Editing and deleting entries is coming in a follow-up update.`}
+              {editingEntryId
+                ? `Editing an existing ${scopeLabel.toLowerCase()} entry. The location is locked — to move an entry, delete it and re-add it elsewhere.`
+                : scope === 'WORLD'
+                  ? 'World entries are stored in the global leaderboard. Rank is the in-game world rank if you have it.'
+                  : `Adds an observation at ${scopeLabel.toLowerCase()} scope. Type a new ${scopeLabel.toLowerCase()} name to start tracking it.`}
             </div>
           </div>
         )}
@@ -587,16 +781,23 @@ export const LeaderboardsTracker: React.FC = () => {
                   else if (position === 2) posClass = 'text-slate-300 font-bold font-mono';
                   else if (position === 3) posClass = 'text-orange-400 font-bold font-mono';
 
+                  const playerEntries = rawEntriesByPlayer[entry.name] || [];
+                  const canExpand = entry.source === 'reported' && playerEntries.length > 0;
+                  const isExpanded = expandedPlayer === entry.name;
+                  const colCount = showSourceColumn ? 5 : 4;
+
                   return (
+                    <React.Fragment key={entry.name}>
                     <tr
-                      key={entry.name}
                       onClick={() => {
                         if (entry.source === 'identified') {
                           setInfoNote(`${entry.name}'s total here is computed from your town observations. To change it, edit their entries in the relevant town(s) on the Town scope.`);
+                        } else if (canExpand) {
+                          setExpandedPlayer(isExpanded ? null : entry.name);
                         }
                       }}
                       className={`transition-colors ${
-                        entry.source === 'identified' ? 'cursor-help' : ''
+                        entry.source === 'identified' ? 'cursor-help' : canExpand ? 'cursor-pointer' : ''
                       } ${isMe ? 'bg-cyan-500/10 hover:bg-cyan-500/15' : 'hover:bg-slate-700/30'}`}
                     >
                       {/* Position */}
@@ -610,6 +811,12 @@ export const LeaderboardsTracker: React.FC = () => {
                       {/* Player name */}
                       <td className="p-3">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {canExpand && (
+                            <ChevronDown
+                              size={14}
+                              className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          )}
                           <span className={`font-bold ${isMe ? 'text-cyan-300' : 'text-white'}`}>
                             {entry.name}
                           </span>
@@ -666,6 +873,54 @@ export const LeaderboardsTracker: React.FC = () => {
                         {entry.lastSeen}
                       </td>
                     </tr>
+
+                    {/* Expanded entry list — edit / delete */}
+                    {isExpanded && canExpand && (
+                      <tr className="bg-slate-900/60">
+                        <td colSpan={colCount} className="px-4 py-3">
+                          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-2">
+                            {entry.name} — all observations at this scope
+                          </div>
+                          <div className="space-y-1">
+                            {playerEntries.map((re: any) => (
+                              <div
+                                key={re.id}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+                                  String(editingEntryId) === String(re.id)
+                                    ? 'bg-amber-500/15 border border-amber-500/40'
+                                    : 'bg-slate-800 border border-slate-700'
+                                }`}
+                              >
+                                <span className="text-slate-400 font-mono text-xs w-24">{re.date}</span>
+                                <span className="text-green-400 font-mono font-bold flex-1">
+                                  {fmt(re.parcels || 0)} <span className="text-slate-600 text-xs">parcels</span>
+                                </span>
+                                {re.rank != null && (
+                                  <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold">
+                                    🏆 #{re.rank}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={(ev) => { ev.stopPropagation(); startEdit(re); }}
+                                  className="text-blue-400 hover:text-blue-300 p-1 rounded hover:bg-slate-700"
+                                  title="Edit this entry"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  onClick={(ev) => { ev.stopPropagation(); handleDeleteEntry(String(re.id)); }}
+                                  className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-slate-700"
+                                  title="Delete this entry"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -774,26 +1029,53 @@ export const LeaderboardsTracker: React.FC = () => {
                       }}
                       labelStyle={{ color: '#e2e8f0' }}
                     />
-                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    {Array.from(selectedPlayers).map((name, idx) => (
-                      <Line
-                        key={name}
-                        type="monotone"
-                        dataKey={name}
-                        stroke={LINE_COLORS[idx % LINE_COLORS.length]}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        connectNulls
-                      />
-                    ))}
+                    <Legend
+                      wrapperStyle={{ fontSize: '12px' }}
+                      payload={Array.from(selectedPlayers).map((name, idx) => ({
+                        value: name,
+                        type: 'line',
+                        color: LINE_COLORS[idx % LINE_COLORS.length]
+                      }))}
+                    />
+                    {Array.from(selectedPlayers).map((name, idx) => {
+                      const color = LINE_COLORS[idx % LINE_COLORS.length];
+                      return (
+                        <React.Fragment key={name}>
+                          {/* Solid: real observed data */}
+                          <Line
+                            type="monotone"
+                            dataKey={name}
+                            stroke={color}
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            connectNulls
+                            legendType="none"
+                            name={name}
+                          />
+                          {/* Dashed: carried forward to today (a guaranteed floor) */}
+                          <Line
+                            type="monotone"
+                            dataKey={`${name}__proj`}
+                            stroke={color}
+                            strokeWidth={2}
+                            strokeDasharray="5 4"
+                            dot={false}
+                            connectNulls
+                            legendType="none"
+                            name={`${name} (projected)`}
+                          />
+                        </React.Fragment>
+                      );
+                    })}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
 
             <div className="text-[10px] text-slate-500">
-              Lines use each player's logged observations at this scope, carried forward between dates.
-              Sparse data shows as dots — log more over time to fill in the lines.
+              Solid lines are logged observations. Dashed segments carry the last known value
+              forward to today — since parcels can't decrease, that's a guaranteed minimum
+              (the player likely has more).
             </div>
           </div>
         )}
