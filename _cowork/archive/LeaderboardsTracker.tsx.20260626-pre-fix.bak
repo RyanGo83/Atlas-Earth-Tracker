@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapPin, Map, Globe, Trophy, ChevronDown, Crown, User, Users, LineChart as LineChartIcon, Plus, X, Info, Pencil, Trash2, Check } from 'lucide-react';
+import { MapPin, Map, Globe, Trophy, ChevronDown, Crown, User, Users, LineChart as LineChartIcon, Plus, X, Info, Pencil, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getMergedLeaderboard, listScopeValues, type MergedPlayerEntry } from '../leaderboardMerge';
-import { parseLocalDate } from '../utils';
 
 // localStorage keys
 const TOWN_KEY = 'atlas_town_data_v2';
@@ -30,7 +29,7 @@ const sortEntries = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
     if (!aHas && bHas) return 1;
     if (aHas && bHas) return (a.rank! - b.rank!);
     if (b.parcels !== a.parcels) return b.parcels - a.parcels;
-    return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
+    return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
   });
 };
 
@@ -56,11 +55,6 @@ export const LeaderboardsTracker: React.FC = () => {
   const [infoNote, setInfoNote] = useState<string | null>(null);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-
-  // Quick-update state — inline "log a new parcel count right now" on a leaderboard row,
-  // as opposed to the full Add/Edit form below (which supports backdating, rank, location).
-  const [quickEditPlayer, setQuickEditPlayer] = useState<string | null>(null);
-  const [quickEditValue, setQuickEditValue] = useState('');
 
   // --- LOAD DATA (reusable) ---
   const loadAllData = () => {
@@ -122,7 +116,7 @@ export const LeaderboardsTracker: React.FC = () => {
     town.entries.forEach((e: any) => {
       const name = (e.name || '').trim();
       if (!name) return;
-      if (!latest[name] || parseLocalDate(e.date) > parseLocalDate(latest[name].date)) {
+      if (!latest[name] || new Date(e.date) > new Date(latest[name].date)) {
         latest[name] = e;
       }
     });
@@ -206,7 +200,7 @@ export const LeaderboardsTracker: React.FC = () => {
         hist[name].push({ date: e.date, parcels: e.parcels || 0 });
       });
       Object.keys(hist).forEach(n =>
-        hist[n].sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
+        hist[n].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       );
       return hist;
     }
@@ -261,16 +255,16 @@ export const LeaderboardsTracker: React.FC = () => {
       const dateSet = new Set<string>();
       Object.values(townMap).forEach(arr => arr.forEach(pt => dateSet.add(pt.date)));
       const dates = Array.from(dateSet).sort(
-        (a, b) => parseLocalDate(a).getTime() - parseLocalDate(b).getTime()
+        (a, b) => new Date(a).getTime() - new Date(b).getTime()
       );
       identifiedHist[player] = dates.map(date => {
-        const dTime = parseLocalDate(date).getTime();
+        const dTime = new Date(date).getTime();
         let total = 0;
         Object.values(townMap).forEach(arr => {
           // Player's latest parcel count in this town on or before `date`
           let v = 0;
           arr.forEach(pt => {
-            if (parseLocalDate(pt.date).getTime() <= dTime) v = pt.parcels;
+            if (new Date(pt.date).getTime() <= dTime) v = pt.parcels;
           });
           total += v;
         });
@@ -330,7 +324,7 @@ export const LeaderboardsTracker: React.FC = () => {
     });
     dateSet.add(today);
     let dates = Array.from(dateSet).sort(
-      (a, b) => parseLocalDate(a).getTime() - parseLocalDate(b).getTime()
+      (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
 
     // Apply time filter
@@ -342,26 +336,26 @@ export const LeaderboardsTracker: React.FC = () => {
       const cutoffStr = cutoff.toISOString().split('T')[0];
       dates.push(cutoffStr);
       dates = Array.from(new Set(dates)).sort(
-        (a, b) => parseLocalDate(a).getTime() - parseLocalDate(b).getTime()
+        (a, b) => new Date(a).getTime() - new Date(b).getTime()
       );
-      dates = dates.filter(d => parseLocalDate(d).getTime() >= cutoff.getTime());
+      dates = dates.filter(d => new Date(d + 'T00:00:00').getTime() >= cutoff.getTime());
     }
 
     return dates.map(date => {
       const row: any = { date };
-      const dTime = parseLocalDate(date).getTime();
+      const dTime = new Date(date).getTime();
       selected.forEach(p => {
         const h = scopeHistory[p] || [];
         if (h.length === 0) return;
 
         // Last real observation date for this player
-        const lastObsTime = parseLocalDate(h[h.length - 1].date).getTime();
+        const lastObsTime = new Date(h[h.length - 1].date).getTime();
 
         // Carry-forward value: latest entry on or before this date
         let val: number | undefined;
         let hasExactPoint = false;
         for (const pt of h) {
-          const ptTime = parseLocalDate(pt.date).getTime();
+          const ptTime = new Date(pt.date).getTime();
           if (ptTime <= dTime) val = pt.parcels;
           if (ptTime === dTime) hasExactPoint = true;
         }
@@ -403,34 +397,10 @@ export const LeaderboardsTracker: React.FC = () => {
     if (scope === 'TOWN') return { key: TOWN_KEY, topKey: 'towns', loc: locOverride ?? scopeValue };
     if (scope === 'STATE') return { key: STATE_KEY, topKey: 'states', loc: locOverride ?? scopeValue };
     if (scope === 'COUNTRY') return { key: COUNTRY_KEY, topKey: 'countries', loc: locOverride ?? scopeValue };
-    // WORLD — single region. Prefer the Earth tracker's own pointer (currentRegion) so
-    // writes land wherever the legacy tracker (or a prior Leaderboards add) already pointed,
-    // instead of an arbitrary object-key order. Falls back to the first region alphabetically,
-    // then to a brand-new 'World' region if none exist yet.
+    // WORLD — single region
     const regions = earthData?.regions || {};
-    const regionKey =
-      (earthData?.currentRegion && regions[earthData.currentRegion] ? earthData.currentRegion : undefined) ??
-      Object.keys(regions).sort()[0] ??
-      'World';
+    const regionKey = Object.keys(regions)[0] || 'World';
     return { key: EARTH_KEY, topKey: 'regions', loc: regionKey };
-  };
-
-  // Shared write helper — merges a new `entries` array into the store at one location,
-  // preserving any other fields already on that location object (e.g. town state/country tags).
-  const writeLocationEntries = (key: string, topKey: string, loc: string, entries: any[]) => {
-    let raw: any;
-    try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch { raw = {}; }
-    if (!raw[topKey]) raw[topKey] = {};
-    const existing = raw[topKey][loc];
-    const extraDefaults = scope === 'TOWN' ? { country: 'USA' } : {};
-    raw[topKey][loc] = {
-      ...extraDefaults,
-      ...(existing || {}),
-      entries,
-      lastUpdated: new Date().toISOString()
-    };
-    if (scope === 'WORLD' && !raw.currentRegion) raw.currentRegion = loc;
-    localStorage.setItem(key, JSON.stringify(raw));
   };
 
   // Raw per-player entry lists at the current scope (for the expandable edit/delete view)
@@ -451,7 +421,7 @@ export const LeaderboardsTracker: React.FC = () => {
       map[name].push(e);
     });
     Object.keys(map).forEach(n =>
-      map[n].sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
+      map[n].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     );
     return map;
   }, [scope, scopeValue, townData, stateData, countryData, earthData]);
@@ -479,7 +449,9 @@ export const LeaderboardsTracker: React.FC = () => {
 
     let raw: any;
     try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch { raw = {}; }
-    const existing = raw[topKey]?.[loc];
+    if (!raw[topKey]) raw[topKey] = {};
+
+    const existing = raw[topKey][loc];
     let entries: any[] = (existing && existing.entries) ? [...existing.entries] : [];
 
     if (editingEntryId) {
@@ -497,7 +469,16 @@ export const LeaderboardsTracker: React.FC = () => {
       });
     }
 
-    writeLocationEntries(key, topKey, loc, entries);
+    // Town objects keep their state/country tags; new towns default to USA
+    const extraDefaults = scope === 'TOWN' ? { country: 'USA' } : {};
+    raw[topKey][loc] = {
+      ...extraDefaults,
+      ...(existing || {}),
+      entries,
+      lastUpdated: new Date().toISOString()
+    };
+    if (scope === 'WORLD' && !raw.currentRegion) raw.currentRegion = loc;
+    localStorage.setItem(key, JSON.stringify(raw));
 
     loadAllData();
 
@@ -551,42 +532,6 @@ export const LeaderboardsTracker: React.FC = () => {
     setFormRank('');
     setFormDate(new Date().toISOString().split('T')[0]);
   };
-
-  // --- QUICK UPDATE (inline, right on the leaderboard row) ---
-  // For when you're standing in a town and see a rival jumped up — log it on the spot
-  // instead of scrolling to the Add/Edit observation form. Always logs today's date and
-  // carries no rank; use the full form below for backdating, rank, or moving a location.
-  const handleQuickUpdate = (name: string) => {
-    const parcels = parseInt(quickEditValue);
-    if (!quickEditValue || isNaN(parcels)) { alert('Enter a valid parcel count.'); return; }
-    const { key, topKey, loc } = getStoreInfo();
-    let raw: any;
-    try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch { raw = {}; }
-    const existing = raw[topKey]?.[loc];
-    const entries: any[] = (existing && existing.entries) ? [...existing.entries] : [];
-    entries.push({
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-      rank: null,
-      parcels,
-      date: new Date().toISOString().split('T')[0]
-    });
-    writeLocationEntries(key, topKey, loc, entries);
-    loadAllData();
-    setQuickEditPlayer(null);
-    setQuickEditValue('');
-    setInfoNote(`Logged ${fmt(parcels)} parcels for ${name} today.`);
-  };
-
-  const cancelQuickEdit = () => {
-    setQuickEditPlayer(null);
-    setQuickEditValue('');
-  };
-
-  // Reset any in-progress quick edit if the scope or location changes underneath it
-  useEffect(() => {
-    cancelQuickEdit();
-  }, [scope, scopeValue]);
 
 
   return (
@@ -893,61 +838,16 @@ export const LeaderboardsTracker: React.FC = () => {
 
                       {/* Parcels */}
                       <td className="p-3 text-right">
-                        {quickEditPlayer === entry.name ? (
-                          <div className="flex items-center justify-end gap-1" onClick={(ev) => ev.stopPropagation()}>
-                            <input
-                              type="number"
-                              autoFocus
-                              value={quickEditValue}
-                              onChange={(e) => setQuickEditValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleQuickUpdate(entry.name);
-                                if (e.key === 'Escape') cancelQuickEdit();
-                              }}
-                              className="w-24 bg-slate-900 border border-cyan-500 rounded px-2 py-1 text-white text-sm font-mono text-right outline-none"
-                            />
-                            <button
-                              onClick={() => handleQuickUpdate(entry.name)}
-                              className="text-green-400 hover:text-green-300 p-1 rounded hover:bg-slate-700"
-                              title="Save — logs today's date"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              onClick={cancelQuickEdit}
-                              className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700"
-                              title="Cancel"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1.5 group/parcels">
-                            <span
-                              className="font-mono font-bold text-green-400"
-                              title={
-                                gap !== null
-                                  ? `Reported: ${fmt(entry.reportedParcels!)} · Identified: ${fmt(entry.identifiedParcels!)} · Gap: ${fmt(Math.abs(gap))}`
-                                  : undefined
-                              }
-                            >
-                              {fmt(entry.parcels)}
-                            </span>
-                            {canExpand && (
-                              <button
-                                onClick={(ev) => {
-                                  ev.stopPropagation();
-                                  setQuickEditPlayer(entry.name);
-                                  setQuickEditValue(String(entry.parcels));
-                                }}
-                                className="text-cyan-400 hover:text-cyan-300 p-0.5 rounded hover:bg-slate-700 opacity-60 hover:opacity-100 transition-opacity"
-                                title="Quick-update parcel count (logs today's date)"
-                              >
-                                <Plus size={13} />
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        <span
+                          className="font-mono font-bold text-green-400"
+                          title={
+                            gap !== null
+                              ? `Reported: ${fmt(entry.reportedParcels!)} · Identified: ${fmt(entry.identifiedParcels!)} · Gap: ${fmt(Math.abs(gap))}`
+                              : undefined
+                          }
+                        >
+                          {fmt(entry.parcels)}
+                        </span>
                       </td>
 
                       {/* Source badge */}

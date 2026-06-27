@@ -140,7 +140,7 @@ export const StateTracker: React.FC = () => {
       ...prev,
       states: {
         ...prev.states,
-        [prev.currentState!]: { ...prev.states[prev.currentState!], entries: updatedEntries, lastUpdated: new Date().toISOString() }
+        [prev.currentState!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
       }
     }));
     cancelEditing();
@@ -168,7 +168,7 @@ export const StateTracker: React.FC = () => {
      if (!window.confirm("Delete this entry?")) return;
      const currentList = data.states[data.currentState].entries;
      const updatedEntries = currentList.filter(e => e.id !== id);
-     setData(prev => ({ ...prev, states: { ...prev.states, [prev.currentState!]: { ...prev.states[prev.currentState!], entries: updatedEntries, lastUpdated: new Date().toISOString() } } }));
+     setData(prev => ({ ...prev, states: { ...prev.states, [prev.currentState!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() } } }));
      if (editingId === id) cancelEditing();
   };
 

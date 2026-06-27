@@ -124,7 +124,7 @@ export const EarthTracker: React.FC = () => {
       ...prev,
       regions: {
         ...prev.regions,
-        [prev.currentRegion!]: { ...prev.regions[prev.currentRegion!], entries: updatedEntries, lastUpdated: new Date().toISOString() }
+        [prev.currentRegion!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
       }
     }));
 
@@ -157,7 +157,7 @@ export const EarthTracker: React.FC = () => {
        ...prev,
        regions: {
          ...prev.regions,
-         [prev.currentRegion!]: { ...prev.regions[prev.currentRegion!], entries: updatedEntries, lastUpdated: new Date().toISOString() }
+         [prev.currentRegion!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
        }
      }));
      if (editingId === id) cancelEditing();

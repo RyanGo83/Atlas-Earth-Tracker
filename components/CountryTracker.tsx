@@ -124,7 +124,7 @@ export const CountryTracker: React.FC = () => {
       ...prev,
       countries: {
         ...prev.countries,
-        [prev.currentCountry!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
+        [prev.currentCountry!]: { ...prev.countries[prev.currentCountry!], entries: updatedEntries, lastUpdated: new Date().toISOString() }
       }
     }));
 
@@ -157,7 +157,7 @@ export const CountryTracker: React.FC = () => {
        ...prev,
        countries: {
          ...prev.countries,
-         [prev.currentCountry!]: { entries: updatedEntries, lastUpdated: new Date().toISOString() }
+         [prev.currentCountry!]: { ...prev.countries[prev.currentCountry!], entries: updatedEntries, lastUpdated: new Date().toISOString() }
        }
      }));
      if (editingId === id) cancelEditing();

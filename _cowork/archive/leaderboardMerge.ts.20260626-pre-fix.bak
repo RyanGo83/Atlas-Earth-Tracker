@@ -17,7 +17,6 @@ import {
   type AllTownsDataLite,
   type PlayerRollup
 } from './rollup';
-import { parseLocalDate } from './utils';
 
 // --- TYPES ---
 
@@ -75,8 +74,8 @@ const latestPerPlayer = (entries: ReportedEntry[]): Record<string, ReportedEntry
       out[name] = e;
       continue;
     }
-    const eTime = parseLocalDate(e.date).getTime();
-    const exTime = parseLocalDate(existing.date).getTime();
+    const eTime = new Date(e.date).getTime();
+    const exTime = new Date(existing.date).getTime();
     if (eTime > exTime || (eTime === exTime && e.parcels > existing.parcels)) {
       out[name] = e;
     }
@@ -120,7 +119,7 @@ const mergePlayer = (
 
   // Both exist — use the higher value as the "source of truth" for display
   const lastSeen =
-    parseLocalDate(reported.date).getTime() > parseLocalDate(identifiedRollup.lastSeen).getTime()
+    new Date(reported.date).getTime() > new Date(identifiedRollup.lastSeen).getTime()
       ? reported.date
       : identifiedRollup.lastSeen;
 
@@ -167,7 +166,7 @@ const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
     if (!aHas && bHas) return 1;
     if (aHas && bHas) return (a.rank! - b.rank!);
     if (b.parcels !== a.parcels) return b.parcels - a.parcels;
-    return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
+    return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
   });
 };
 
@@ -205,7 +204,7 @@ const buildWorldReportedFromCountries = (
         out[name] = {
           name,
           parcels: out[name].parcels + entry.parcels,
-          date: parseLocalDate(entry.date) > parseLocalDate(out[name].date) ? entry.date : out[name].date
+          date: new Date(entry.date) > new Date(out[name].date) ? entry.date : out[name].date
         };
       }
     });

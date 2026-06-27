@@ -14,8 +14,6 @@
 // These mirror TownTracker's internal shapes but are redeclared here to keep
 // rollup.ts dependency-free and easy to reuse from other components.
 
-import { parseLocalDate } from './utils';
-
 export interface TownEntryLite {
   id: number | string;
   name: string;
@@ -65,8 +63,8 @@ const getLatestEntryPerPlayer = (entries: TownEntryLite[]): Record<string, TownE
       latest[cleanName] = e;
       continue;
     }
-    const eTime = parseLocalDate(e.date).getTime();
-    const exTime = parseLocalDate(existing.date).getTime();
+    const eTime = new Date(e.date).getTime();
+    const exTime = new Date(existing.date).getTime();
     if (eTime > exTime || (eTime === exTime && e.parcels > existing.parcels)) {
       latest[cleanName] = e;
     }
@@ -101,7 +99,7 @@ const mergeTownIntoRollup = (
       date: entry.date
     });
     // Track the most recent observation date across all towns
-    if (parseLocalDate(entry.date).getTime() > parseLocalDate(r.lastSeen).getTime()) {
+    if (new Date(entry.date).getTime() > new Date(r.lastSeen).getTime()) {
       r.lastSeen = entry.date;
     }
   }
@@ -217,6 +215,6 @@ export const sortRollupToLeaderboard = (rollup: PlayerRollup): Array<{ name: str
     .map(([name, entry]) => ({ name, ...entry }))
     .sort((a, b) => {
       if (b.parcels !== a.parcels) return b.parcels - a.parcels;
-      return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
+      return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
     });
 };
