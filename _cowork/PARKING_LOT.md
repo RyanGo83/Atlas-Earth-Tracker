@@ -6,10 +6,7 @@
 
 ## ⏳ In Progress
 
-### Leaderboards feature — Phase D (cutover)
-**What:** Remove the legacy Town / State / Country / Earth tabs from `App.tsx` navigation. Keep the component files in the codebase for one release as a safety net.
-**Status:** Waiting on owner to live with the new Leaderboards tab for ~1 week before retiring the old ones. Once retired, the legacy files can be deleted after another week of confidence.
-**Blocker:** time-based — not a code issue.
+(nothing currently in progress)
 
 ---
 
@@ -53,6 +50,10 @@
 
 22. **Mayorship earnings tracking.** Track earnings from being Mayor of a town (the 10% kickback on certain in-town events) separately from regular rent. Owner only has visibility into their own mayorship earnings, not rivals' — so this is a personal stats addition (likely RentTracker or Performance tab), not a leaderboard feature.
 
+### Phase D follow-up
+
+9. **Delete legacy Town/State/Country/Earth component files.** Nav and routing for these were removed from `App.tsx` (June 27, 2026); the component files (`TownTracker.tsx`, `StateTracker.tsx`, `CountryTracker.tsx`, `EarthTracker.tsx`) are still in the codebase as a safety net. Delete them after another week of confidence in Leaderboards with no need to roll back.
+
 ### Polish & small UX
 
 6. **Clipboard backup size guard.** Warn the owner and recommend the file-based Backup when the backup payload is too large for reliable clipboard transfer. This caused a data scare once — the clipboard truncated and only the small `state` section restored.
@@ -78,6 +79,9 @@
 ---
 
 ## ✅ Completed (recent first)
+
+### Leaderboards Phase D — cutover (June 27, 2026)
+- ✅ **Legacy Town/State/Country/Earth tabs removed from nav and routing.** `App.tsx`: removed the four `NavButton`s and their `renderContent()` cases. `Tab` enum values and component imports left in place — component files kept on disk as a safety net (see Pending #9 to delete them after another week). Archived pre-change copy to `_cowork/archive/App.tsx.20260627-pre-phaseD.bak`.
 
 ### Leaderboards Phase C — Parts 1, 2, 2.5, 3, 3.5
 - ✅ **Part 3.5 (May 2026)** — Edit and delete entries from inside the Leaderboards tab. Expandable Reported player rows with per-entry edit/delete; Identified rows show "computed from towns" note.

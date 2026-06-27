@@ -286,6 +286,10 @@ const App: React.FC = () => {
     switch (activeTab) {
       case Tab.RENT: return <RentTracker key={refreshKey} />;
       case Tab.RIVAL: return <RivalTracker key={refreshKey} />;
+      case Tab.TOWN: return <TownTracker key={refreshKey} />;
+      case Tab.STATE: return <StateTracker key={refreshKey} />;
+      case Tab.COUNTRY: return <CountryTracker key={refreshKey} />;
+      case Tab.EARTH: return <EarthTracker key={refreshKey} />;
       case Tab.MINIGAME: return <MiniGameTracker key={refreshKey} />;
       case Tab.STRATEGY: return <StrategyTab key={refreshKey} />;
 	  case Tab.ROI: return <ROITracker key={refreshKey} />;
@@ -467,6 +471,31 @@ const App: React.FC = () => {
               isActive={activeTab === Tab.LEADERBOARDS}
               onClick={() => setActiveTab(Tab.LEADERBOARDS)}
               label="📍 Leaderboards"
+              activeColor="bg-cyan-500 text-white"
+            />
+            <span className="text-slate-600 font-bold text-lg select-none shrink-0">|</span>
+            <NavButton
+              isActive={activeTab === Tab.TOWN}
+              onClick={() => setActiveTab(Tab.TOWN)}
+              label="📍 Town"
+              activeColor="bg-purple-500 text-white"
+            />
+            <NavButton
+              isActive={activeTab === Tab.STATE}
+              onClick={() => setActiveTab(Tab.STATE)}
+              label="🗺️ State"
+              activeColor="bg-orange-500 text-white"
+            />
+            <NavButton
+              isActive={activeTab === Tab.COUNTRY}
+              onClick={() => setActiveTab(Tab.COUNTRY)}
+              label="🌐 Country"
+              activeColor="bg-emerald-500 text-white"
+            />
+            <NavButton
+              isActive={activeTab === Tab.EARTH}
+              onClick={() => setActiveTab(Tab.EARTH)}
+              label="🌍 Earth"
               activeColor="bg-cyan-500 text-white"
             />
           </div>
