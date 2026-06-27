@@ -59,7 +59,7 @@
 
 7. **Recharts zero-size warning.** Occasional `width(-1)/height(-1) of chart should be greater than 0` in the console, usually from charts rendering inside a collapsed/hidden tab. Audit container sizing.
 
-8. **Time range options across the app.** Drop `WTD`, add `7d` and `30d`. Keep `ALL`, `YTD`, `MTD`. The new Leaderboards chart already uses the new set locally; the rest of the app (and `utils.ts` shared `TimeRange` type) still uses `WTD/MTD/YTD/ALL`. One file change + every tab's time-filter UI.
+8. **Time range options across the app.** Drop `WTD`, add `7d` and `30d`. Keep `ALL`, `YTD`, `MTD`. Leaderboards and RentTracker ("My Stats") now both use the new set locally (each with its own local range type, not the shared `utils.ts` `TimeRange`). Remaining: Rival, Town/State/Country/Earth (legacy — low priority), and Performance tabs still use `WTD/MTD/YTD/ALL` via the shared type.
 
 9. **Hometown as default landing for Town / State / Country.** Use the Profile's hometown to default the scope dropdown instead of alphabetical-first. Needs Profile to expose the hometown's state and country (currently only the town).
 

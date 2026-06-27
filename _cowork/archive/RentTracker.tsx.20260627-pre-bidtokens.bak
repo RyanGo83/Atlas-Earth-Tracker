@@ -3,24 +3,19 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ComposedChart, Bar
 } from 'recharts';
-import { AlertTriangle, TrendingUp, Wallet, Settings2, History as HistoryIcon, Clock, Calendar, Landmark, Coins, LayoutDashboard, Activity, User, Save, Check, BarChart2, Ticket } from 'lucide-react';
-import { parseLocalDate } from '../utils';
+import { AlertTriangle, TrendingUp, Wallet, Settings2, History as HistoryIcon, Clock, Calendar, Landmark, Coins, LayoutDashboard, Activity, User, Save, Check, BarChart2 } from 'lucide-react';
+import { TimeRange, filterByTimeRange } from '../utils';
 
 // --- TYPES & INTERFACES ---
 interface WalletHistoryItem {
   date: string;
   atlasBucks: number;
   diamonds: number;
-  bidTokens?: number;
   currentBalance: number;
-  totalAccrued: number;
+  totalAccrued: number; 
   totalParcels?: number;
-  passports?: number;
+  passports?: number; 
 }
-
-// Date-range options for the wallet/portfolio chart — matches the set used on
-// the Leaderboards tab (parking lot item #8: rolling these out app-wide is pending).
-type RentChartRange = 'ALL' | 'YTD' | 'MTD' | '30d' | '7d';
 
 interface RentData {
   common: number;
@@ -29,7 +24,6 @@ interface RentData {
   legendary: number;
   atlasBucks: number;
   diamonds: number;
-  bidTokens: number;
   badgeCount: number;
   boostAdHours: number;
   srbHoursMonth: number;
@@ -73,14 +67,14 @@ const InputCard: React.FC<InputCardProps> = ({ label, value, onChange, colorClas
 export const RentTracker: React.FC = () => {
   const [data, setData] = useState<RentData>({
     common: 0, rare: 0, epic: 0, legendary: 0,
-    atlasBucks: 0, diamonds: 0, bidTokens: 0,
+    atlasBucks: 0, diamonds: 0,
     badgeCount: 0, boostAdHours: 0, srbHoursMonth: 0,
     currentBalance: 0, cashedOut: 0, reinvested: 0, totalAccrued: 0,
     history: []
   });
 
   const [chartMode, setChartMode] = useState<ChartMode>('WALLET');
-  const [timeRange, setTimeRange] = useState<RentChartRange>('ALL');
+  const [timeRange, setTimeRange] = useState<TimeRange>('ALL');
   const [calculatedStats, setCalculatedStats] = useState<any>({});
   const isInitialized = useRef(false);
   
@@ -96,8 +90,7 @@ export const RentTracker: React.FC = () => {
           ...h,
           totalAccrued: h.totalAccrued !== undefined ? h.totalAccrued : (h.currentBalance || 0),
           totalParcels: h.totalParcels !== undefined ? h.totalParcels : 0,
-          passports: h.passports !== undefined ? h.passports : 0,
-          bidTokens: h.bidTokens !== undefined ? h.bidTokens : 0
+          passports: h.passports !== undefined ? h.passports : 0
         }));
 
         const today = new Date().toISOString().split('T')[0];
@@ -109,7 +102,6 @@ export const RentTracker: React.FC = () => {
             date: today,
             atlasBucks: parsed.atlasBucks || 0,
             diamonds: parsed.diamonds || 0,
-            bidTokens: parsed.bidTokens || 0,
             currentBalance: parsed.currentBalance || 0,
             totalAccrued: parsed.totalAccrued || 0,
             totalParcels: (parsed.common || 0) + (parsed.rare || 0) + (parsed.epic || 0) + (parsed.legendary || 0),
@@ -210,7 +202,7 @@ setData(prev => ({ ...prev, ...parsed }));
     setData(prev => {
       const newData = { ...prev, [field]: value };
       
-      if (['atlasBucks', 'diamonds', 'bidTokens', 'currentBalance', 'totalAccrued', 'common', 'rare', 'epic', 'legendary', 'badgeCount'].includes(field)) {
+      if (['atlasBucks', 'diamonds', 'currentBalance', 'totalAccrued', 'common', 'rare', 'epic', 'legendary', 'badgeCount'].includes(field)) {
         const today = new Date().toISOString().split('T')[0];
         let history = [...(prev.history || [])];
         const lastIdx = history.length - 1;
@@ -221,7 +213,6 @@ setData(prev => ({ ...prev, ...parsed }));
              ...history[lastIdx],
              atlasBucks: field === 'atlasBucks' ? value : prev.atlasBucks,
              diamonds: field === 'diamonds' ? value : prev.diamonds,
-             bidTokens: field === 'bidTokens' ? value : prev.bidTokens,
              currentBalance: field === 'currentBalance' ? value : prev.currentBalance,
              totalAccrued: field === 'totalAccrued' ? value : prev.totalAccrued,
              totalParcels: totalParcelsCount,
@@ -232,7 +223,6 @@ setData(prev => ({ ...prev, ...parsed }));
              date: today,
              atlasBucks: field === 'atlasBucks' ? value : prev.atlasBucks,
              diamonds: field === 'diamonds' ? value : prev.diamonds,
-             bidTokens: field === 'bidTokens' ? value : prev.bidTokens,
              currentBalance: field === 'currentBalance' ? value : prev.currentBalance,
              totalAccrued: field === 'totalAccrued' ? value : prev.totalAccrued,
              totalParcels: totalParcelsCount,
@@ -245,23 +235,10 @@ setData(prev => ({ ...prev, ...parsed }));
     });
   };
 
-  // Cutoff date for the chart's range toggle (mirrors LeaderboardsTracker's getRangeCutoff)
-  const getRangeCutoff = (range: RentChartRange): Date | null => {
-    if (range === 'ALL') return null;
-    const now = new Date();
-    if (range === 'YTD') return new Date(now.getFullYear(), 0, 1);
-    if (range === 'MTD') return new Date(now.getFullYear(), now.getMonth(), 1);
-    if (range === '30d') { const d = new Date(); d.setDate(d.getDate() - 30); return d; }
-    if (range === '7d') { const d = new Date(); d.setDate(d.getDate() - 7); return d; }
-    return null;
-  };
-
   // Filtered History based on time range
   const filteredHistory = useMemo(() => {
     if (!data.history || data.history.length === 0) return [];
-    const cutoff = getRangeCutoff(timeRange);
-    if (!cutoff) return data.history;
-    return data.history.filter(h => parseLocalDate(h.date) >= cutoff);
+    return filterByTimeRange(data.history, 'date', timeRange);
   }, [data.history, timeRange]);
 
   return (
@@ -342,7 +319,7 @@ setData(prev => ({ ...prev, ...parsed }));
             <h3 className="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2 flex items-center gap-2">
               <Wallet size={18} className="text-green-400" /> Wallet Resources
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
                <div>
                   <InputCard label="Atlas Bucks (AB)" value={data.atlasBucks} onChange={(v) => updateField('atlasBucks', v)} colorClass="border-green-500" />
                   <div className="mt-2 text-right text-xs text-green-400 font-mono">
@@ -353,12 +330,6 @@ setData(prev => ({ ...prev, ...parsed }));
                   <InputCard label="Diamonds" value={data.diamonds} onChange={(v) => updateField('diamonds', v)} colorClass="border-cyan-400" />
                   <div className="mt-2 text-right text-xs text-cyan-400 font-mono">
                      Wheel Spins: {Math.floor((data.diamonds || 0) / 2)}
-                  </div>
-               </div>
-               <div>
-                  <InputCard label="Bid Tokens" value={data.bidTokens} onChange={(v) => updateField('bidTokens', v)} colorClass="border-fuchsia-400" />
-                  <div className="mt-2 text-right text-xs text-fuchsia-400 font-mono flex items-center justify-end gap-1">
-                     <Ticket size={11} /> Spendable on bids
                   </div>
                </div>
             </div>
@@ -432,11 +403,11 @@ setData(prev => ({ ...prev, ...parsed }));
                </div>
             </div>
 
-            {/* Range Toggles — same set as the Leaderboards chart (ALL / YTD / MTD / 30d / 7d) */}
+            {/* Range Toggles (YTD & ALL only) */}
             <div className="flex items-center gap-3 mb-4 bg-slate-900/50 p-2 rounded-xl border border-slate-700 w-fit ml-auto">
                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">Range</span>
                <div className="flex gap-1 pr-1">
-                 {(['ALL', 'YTD', 'MTD', '30d', '7d'] as RentChartRange[]).map((range) => (
+                 {(['WTD', 'MTD', 'YTD', 'ALL'] as TimeRange[]).map((range) => (
                    <button 
                      key={range}
                      onClick={() => setTimeRange(range)}
@@ -512,24 +483,14 @@ setData(prev => ({ ...prev, ...parsed }));
                                 strokeWidth={2} 
                                 dot={{ r: 2, fill: '#4ade80' }} 
                             />
-                            <Line
-                                yAxisId="right"
-                                type="monotone"
-                                dataKey="diamonds"
-                                name="Diamonds"
-                                stroke="#22d3ee"
-                                strokeWidth={2}
-                                dot={{ r: 2, fill: '#22d3ee' }}
-                            />
-                            <Line
-                                yAxisId="right"
-                                type="monotone"
-                                dataKey="bidTokens"
-                                name="Bid Tokens"
-                                stroke="#e879f9"
-                                strokeWidth={2}
-                                dot={{ r: 2, fill: '#e879f9' }}
-                                connectNulls
+                            <Line 
+                                yAxisId="right" 
+                                type="monotone" 
+                                dataKey="diamonds" 
+                                name="Diamonds" 
+                                stroke="#22d3ee" 
+                                strokeWidth={2} 
+                                dot={{ r: 2, fill: '#22d3ee' }} 
                             />
                           </LineChart>
                         ) : (
