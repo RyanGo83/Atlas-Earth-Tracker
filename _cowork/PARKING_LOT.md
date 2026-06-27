@@ -61,8 +61,6 @@
 
 8. **Time range options across the app.** Drop `WTD`, add `7d` and `30d`. Keep `ALL`, `YTD`, `MTD`. Leaderboards and RentTracker ("My Stats") now both use the new set locally (each with its own local range type, not the shared `utils.ts` `TimeRange`). Remaining: Rival, Town/State/Country/Earth (legacy — low priority), and Performance tabs still use `WTD/MTD/YTD/ALL` via the shared type.
 
-9. **Hometown as default landing for Town / State / Country.** Use the Profile's hometown to default the scope dropdown instead of alphabetical-first. Needs Profile to expose the hometown's state and country (currently only the town).
-
 10. **"Stale data" indicator.** When a Reported entry is 60+ days old, show a subtle "stale" marker on the leaderboard row. Surfaces data-freshness without nagging.
 
 11. **"Beyond top 500" indicator.** All in-game leaderboards cap at top 500. A player observed outside the top 500 is ambiguous — they exist but their rank can't be known from the game. Could be a small badge or footnote.
@@ -106,6 +104,9 @@
 - ✅ **State / country tags on towns** — optional `state` and `country` fields on `TownData`, warning badges on untagged towns, modal editor, auto-fill from a seeded common-towns lookup.
 - ✅ **Mobile tab horizontal scroll** — `overflow-x-auto` on the nav strip with thin custom scrollbar.
 - ✅ **Clipboard backup/restore** — Copy backup as text and Paste Restore dialog, complement to the existing file Backup/Restore. Solves daily mobile pain.
+
+### Hometown default scope (June 2026)
+- ✅ **Town and State scope default to the Profile home town.** `LeaderboardsTracker.tsx`'s scope-default effect now prefers the owner's `atlas_home_town` for Town scope, and that town's tagged `state` field (looked up from `townData`, no new Profile field needed) for State scope — falling back to alphabetical-first when there's no match or nothing selected yet. Country scope still defaults alphabetically (not requested); World is unaffected.
 
 ### June 2026 code scan fixes
 - ✅ **Date-parsing UTC bug in Leaderboards math** — `rollup.ts`, `leaderboardMerge.ts`, and `LeaderboardsTracker.tsx` were comparing `YYYY-MM-DD` strings with bare `new Date()` instead of `parseLocalDate()`, which could flip tie-breaks (latest entry, Reported-vs-Identified precedence) by a day depending on timezone. All instances now use `parseLocalDate` from `utils.ts`.
