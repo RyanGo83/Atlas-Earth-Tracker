@@ -12,29 +12,23 @@ No account required. No ads. Your data stays on your device.
 
 Atlas Earth Tracker gives you a set of tools that the game itself doesn't provide — historical data, leaderboard trends, and ROI tracking all in one place.
 
-### 📍 Town Tracker
-Log leaderboard snapshots for any town. See who's gaining parcels, track your rank over time, and spot rivals before they overtake you.
-
-### 🏛️ State Tracker
-Monitor state-level leaderboards across all 50 US states (plus custom regions). Tracks the Governor race and your path to the top.
-
-### 🌐 Country & Earth Trackers
-Keep an eye on the country and global leaderboards. Log entries over time and watch trends develop across the biggest stages in the game.
+### 📍 Leaderboards
+One unified leaderboard for Town, State, Country, and World scopes. See who's gaining parcels, track your rank over time, and spot rivals before they overtake you. Filter the table to Top 10 / 50 / 100 / All — you're always shown even if you fall outside the filter. Includes a Parcel Race chart comparing growth across players, with carry-forward projections (parcels never decrease in-game, so a player's last known count is always a safe floor).
 
 ### 🎯 Rival Tracker
-Add specific players you're competing with and track their parcel counts over time. See exactly how fast they're growing — and whether you're keeping up.
+Add specific players you're competing with and track their parcel counts and portfolio snapshots over time. See exactly how fast they're growing — and whether you're keeping up. Surfaces towns and states where your tracked rival is currently the leader.
 
-### 💰 Rent Tracker
-Log your parcel counts (Common, Rare, Epic, Legendary) and track your rent earnings history. See how your income has grown over time.
+### 💰 My Stats
+Log your parcel counts (Common, Rare, Epic, Legendary), wallet balances (Atlas Bucks, Diamonds, Bid Tokens), badges, and rent earnings history. See how your income has grown over time, filterable by All / YTD / MTD / 30 days / 7 days.
 
-### 📈 ROI Tracker
-Record your Atlas Bucks purchases and track your real-money return on investment. Know exactly what you've spent and what you've earned back.
+### 📊 Performance
+Earnings history, projected vs. actual income, and Atlas Bucks purchase ROI in one place. Know exactly what you've spent and what you've earned back.
 
 ### 🎮 Mini Game Tracker
 Log your mini-game stats and monitor your performance over time.
 
 ### 🧠 Strategy Tab
-A personal notepad for planning your next moves — tier targets, parcel goals, and Atlas Bucks budgeting.
+A personal notepad for planning your next moves — tier targets, parcel goals, Atlas Bucks budgeting, and a Defend mode for towns you're trying to hold.
 
 ---
 

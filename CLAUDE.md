@@ -83,7 +83,7 @@ No backend. No database. No authentication. No AI features inside the app — Cl
 └── vite.config.ts
 ```
 
-**Important:** the four LEGACY trackers (Town/State/Country/Earth) are still wired into navigation but will be retired in **Phase D** after Leaderboards has been used for a week. Do not add features to them. New work on location/leaderboard concerns belongs in `LeaderboardsTracker.tsx`.
+**Important:** the four LEGACY trackers (Town/State/Country/Earth) were removed from navigation and routing in **Phase D** (June 27, 2026). Their component files are still in the codebase as a one-release safety net — do not add features to them, and don't reference them from new code. New work on location/leaderboard concerns belongs in `LeaderboardsTracker.tsx`. The files themselves are slated for deletion after another week of confidence (see `_cowork/PARKING_LOT.md`).
 
 ---
 
@@ -98,8 +98,8 @@ Defined in the `Tab` enum in `App.tsx`:
 | `RIVAL` | 🏆 Rivals | `RivalTracker` | |
 | `STRATEGY` | 🧠 Strategy | `StrategyTab` | Has Defend, Conquer, Plan modes |
 | `ROI` | 📊 Performance | `ROITracker` | Renamed from "ROI" — earnings + ROI + scenarios |
-| `LEADERBOARDS` | 📍 Leaderboards | `LeaderboardsTracker` | New unified tab |
-| `TOWN`, `STATE`, `COUNTRY`, `EARTH` | 📍/🗺️/🌐/🌍 ... | (legacy) | Retiring in Phase D |
+| `LEADERBOARDS` | 📍 Leaderboards | `LeaderboardsTracker` | Unified tab; table has a Top 10/50/100/All filter, defaults to Top 10, always shows you |
+| `TOWN`, `STATE`, `COUNTRY`, `EARTH` | — | (legacy) | Enum values + components still exist but removed from nav/routing as of Phase D (June 27, 2026); see File Structure note above |
 
 The internal `Tab.ROI` name was kept to preserve the `atlas_roi_data_v2` localStorage key.
 
@@ -244,7 +244,7 @@ npm run dev           # starts the local server at localhost:3000
 
 ## Current Status (Quick Reference)
 
-The big in-flight work is the **Leaderboards** feature, which unifies Town/State/Country/Earth into a single scope-aware tab.
+The **Leaderboards** feature, which unifies Town/State/Country/Earth into a single scope-aware tab, has shipped:
 
 - ✅ Foundation (rollup math, merge utility)
 - ✅ New tab skeleton + scope selector
@@ -253,6 +253,8 @@ The big in-flight work is the **Leaderboards** feature, which unifies Town/State
 - ✅ Parcel Race chart with player picker
 - ✅ Carry-forward dashed rays
 - ✅ Add / Edit / Delete entries
-- ⏳ **Phase D: retire the legacy 4 tabs** (after ~1 week of soak testing)
+- ✅ Top 10/50/100/All table filter (always shows you)
+- ✅ **Phase D nav cutover** (June 27, 2026) — legacy Town/State/Country/Earth tabs removed from navigation and routing
+- ⏳ Delete the legacy component files (after another week of confidence, no rollback needed)
 
 See `_cowork/PARKING_LOT.md` for everything else.

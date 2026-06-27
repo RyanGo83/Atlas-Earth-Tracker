@@ -80,6 +80,10 @@
 
 ## ✅ Completed (recent first)
 
+### Leaderboards table row-count filter (June 27, 2026)
+- ✅ **Top 10 / 50 / 100 / All filter on the Leaderboards table.** `LeaderboardsTracker.tsx` — defaults to Top 10. You're always shown even if your rank falls outside the selected count: appended below a "···" gap divider rather than hidden. Doesn't affect the summary cards, chart, or player-picker chips — those still use the full unfiltered leaderboard.
+- ✅ **README.md updated** to reflect the Phase D cutover (Leaderboards replaces the separate Town/State/Country/Earth sections) and recent additions (Bid Tokens, My Stats/Performance renames, the new filters).
+
 ### Leaderboards Phase D — cutover (June 27, 2026)
 - ✅ **Legacy Town/State/Country/Earth tabs removed from nav and routing.** `App.tsx`: removed the four `NavButton`s and their `renderContent()` cases. `Tab` enum values and component imports left in place — component files kept on disk as a safety net (see Pending #9 to delete them after another week). Archived pre-change copy to `_cowork/archive/App.tsx.20260627-pre-phaseD.bak`.
 

@@ -59,6 +59,11 @@ export const LeaderboardsTracker: React.FC = () => {
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
+  // How many rows the leaderboard table shows. 'ALL' = no cap. You are always shown
+  // even if your rank falls outside this count (appended below a gap divider).
+  type ShowCount = 10 | 50 | 100 | 'ALL';
+  const [showCount, setShowCount] = useState<ShowCount>(10);
+
   // Quick-update state — inline "log a new parcel count right now" on a leaderboard row,
   // as opposed to the full Add/Edit form below (which supports backdating, rank, location).
   const [quickEditPlayer, setQuickEditPlayer] = useState<string | null>(null);
@@ -202,6 +207,25 @@ export const LeaderboardsTracker: React.FC = () => {
   const showSourceColumn = scope !== 'TOWN';
   const scopeLabel = SCOPE_CONFIG[scope].label;
   const fmt = (n: number) => n.toLocaleString();
+
+  // --- TABLE DISPLAY FILTER (Top 10/50/100/All) ---
+  // Tags each entry with its true rank in the full leaderboard, then slices to the
+  // selected count. If you'd fall outside that slice, you're appended at the end
+  // anyway — the table renders a "···" divider above your row so it's clear you're
+  // not actually in 11th/51st/101st place.
+  const leaderboardWithPos = useMemo(
+    () => leaderboard.map((e, i) => ({ ...e, _pos: i + 1 })),
+    [leaderboard]
+  );
+
+  const displayedLeaderboard = useMemo(() => {
+    if (showCount === 'ALL') return leaderboardWithPos;
+    const topSlice = leaderboardWithPos.slice(0, showCount);
+    const meInSlice = topSlice.some(p => p.name.toLowerCase() === username.toLowerCase());
+    if (meInSlice) return topSlice;
+    const me = leaderboardWithPos.find(p => p.name.toLowerCase() === username.toLowerCase());
+    return me ? [...topSlice, me] : topSlice;
+  }, [leaderboardWithPos, showCount, username]);
 
   // --- TREND CHART STATE ---
   type ChartRange = 'ALL' | 'YTD' | 'MTD' | '30d' | '7d';
@@ -819,12 +843,29 @@ export const LeaderboardsTracker: React.FC = () => {
 
       {/* --- LEADERBOARD TABLE --- */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-        <div className="p-4 border-b border-slate-700 flex items-center gap-2">
-          <Trophy size={18} className="text-cyan-400" />
-          <h3 className="text-lg font-bold text-white">
-            {scopeLabel} Leaderboard
-            {scope !== 'WORLD' && scopeValue ? <span className="text-slate-400 font-normal"> — {scopeValue}</span> : ''}
-          </h3>
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Trophy size={18} className="text-cyan-400" />
+            <h3 className="text-lg font-bold text-white">
+              {scopeLabel} Leaderboard
+              {scope !== 'WORLD' && scopeValue ? <span className="text-slate-400 font-normal"> — {scopeValue}</span> : ''}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1 border border-slate-700">
+            {([10, 50, 100, 'ALL'] as ShowCount[]).map(c => (
+              <button
+                key={c}
+                onClick={() => setShowCount(c)}
+                className={`text-xs font-bold px-2.5 py-1 rounded transition-colors ${
+                  showCount === c
+                    ? 'bg-cyan-500 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {c === 'ALL' ? 'All' : `Top ${c}`}
+              </button>
+            ))}
+          </div>
         </div>
 
         {leaderboard.length === 0 ? (
@@ -848,8 +889,10 @@ export const LeaderboardsTracker: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
-                {leaderboard.map((entry, idx) => {
-                  const position = idx + 1;
+                {displayedLeaderboard.map((entry, idx) => {
+                  const position = entry._pos;
+                  const prevPos = idx > 0 ? displayedLeaderboard[idx - 1]._pos : null;
+                  const showGapDivider = prevPos !== null && position !== prevPos + 1;
                   const isMe = entry.name.toLowerCase() === username.toLowerCase();
                   const gap = (entry.reportedParcels !== undefined && entry.identifiedParcels !== undefined)
                     ? entry.reportedParcels - entry.identifiedParcels
@@ -868,6 +911,13 @@ export const LeaderboardsTracker: React.FC = () => {
 
                   return (
                     <React.Fragment key={entry.name}>
+                    {showGapDivider && (
+                      <tr>
+                        <td colSpan={colCount} className="px-3 py-1.5 text-center text-slate-600 text-xs tracking-widest bg-slate-900/40">
+                          ···
+                        </td>
+                      </tr>
+                    )}
                     <tr
                       onClick={() => {
                         if (entry.source === 'identified') {
