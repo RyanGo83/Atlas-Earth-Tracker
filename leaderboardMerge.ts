@@ -49,6 +49,7 @@ export interface MergedPlayerEntry {
   reportedParcels?: number;  // raw values kept for tooltip / debugging
   identifiedParcels?: number;
   rank?: number;             // only present when source === 'reported' AND user entered one
+  rankConflict?: boolean;    // true when another player shares this exact recorded rank
   lastSeen: string;          // most recent observation date (across both sources)
   townBreakdown?: Array<{    // present when identified data exists
     town: string;
@@ -154,50 +155,68 @@ const mergePlayer = (
 };
 
 /**
- * Sort the merged leaderboard.
+ * Sort the merged leaderboard in two phases:
  *
- * A manual rank is ground truth, but it can only earn a player a spot at the top
- * of OUR list if we actually have enough OTHER CONFIRMED ranks to account for
- * everyone better than them. Concretely: a player with rank R needs at least R-1
- * other players with a smaller confirmed rank to justify their spot. A parcel-count
- * guess (no confirmed rank) can't be used to fill that gap — we genuinely don't know
- * where an unranked player's true rank falls, so they can't vouch for anyone. If we
- * don't have enough confirmed ranks to account for the gap, this player's rank can't
- * be trusted to place them that high on THIS list — they drop below the parcel-guess
- * players, ordered among any other such overflow players by rank ascending.
+ *   1. Lay out every player WITHOUT a confirmed rank in parcel order (descending).
+ *      This is our best guess at where they sit when we have no harder data.
+ *   2. Walk through that lineup slot by slot (slot 1, 2, 3...). Any player who has
+ *      a confirmed rank gets "moved" into the lineup once the slot counter reaches
+ *      their rank number — bumping the parcel-guess players after that point down
+ *      by one row each. If two players share the exact same recorded rank, they're
+ *      placed together at that slot and flagged (`rankConflict`) so it's visible
+ *      something needs a second look. If a confirmed rank is higher than we have
+ *      slots for (we run out of parcel-guess players first), it just lands at the
+ *      end, in rank order among any other such overflow entries.
  *
- * Final order:
- *   1. "Consistent" ranked players (rank is justified by other confirmed ranks), rank ascending
- *   2. Unranked (parcel-guess only) players, parcels descending
- *   3. "Overflow" ranked players (rank isn't justified by other confirmed ranks), rank ascending
+ * The display label for a confirmed-rank player is always their literal recorded
+ * rank — never a computed row number. Parcel-guess players display their computed
+ * row number (see `_pos` in LeaderboardsTracker.tsx), which naturally develops gaps
+ * around inserted ranked players.
  */
 export const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
-  const ranked = entries
-    .filter(e => typeof e.rank === 'number')
-    .sort((a, b) => a.rank! - b.rank!);
-  const unranked = entries
-    .filter(e => typeof e.rank !== 'number')
-    .sort((a, b) => {
-      if (b.parcels !== a.parcels) return b.parcels - a.parcels;
-      return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
-    });
-
-  const consistent: MergedPlayerEntry[] = [];
-  const overflow: MergedPlayerEntry[] = [];
-
-  for (const entry of ranked) {
-    const rank = entry.rank!;
-    // Can our OTHER CONFIRMED ranks plausibly account for the rank-1 players who
-    // should be better than this one? Unranked (guess-only) players don't count —
-    // they can't prove anyone exists at the ranks in between.
-    if (rank - 1 <= consistent.length) {
-      consistent.push(entry);
+  // Group ranked entries by rank value so duplicate/conflicting ranks stay together.
+  const rankGroups = new Map<number, MergedPlayerEntry[]>();
+  const unranked: MergedPlayerEntry[] = [];
+  for (const e of entries) {
+    if (typeof e.rank === 'number') {
+      const group = rankGroups.get(e.rank) || [];
+      group.push(e);
+      rankGroups.set(e.rank, group);
     } else {
-      overflow.push(entry);
+      unranked.push(e);
     }
   }
 
-  return [...consistent, ...unranked, ...overflow];
+  const sortedRanks = Array.from(rankGroups.keys()).sort((a, b) => a - b);
+  unranked.sort((a, b) => {
+    if (b.parcels !== a.parcels) return b.parcels - a.parcels;
+    return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
+  });
+
+  const result: MergedPlayerEntry[] = [];
+  let rIdx = 0;
+  let uIdx = 0;
+  let slot = 1;
+
+  while (rIdx < sortedRanks.length || uIdx < unranked.length) {
+    const nextRank = rIdx < sortedRanks.length ? sortedRanks[rIdx] : null;
+    // A confirmed rank is "due" once the slot counter reaches it — or immediately
+    // if we've run out of parcel-guess players to keep filling slots with.
+    const rankIsDue = nextRank !== null && (uIdx >= unranked.length || nextRank <= slot);
+
+    if (rankIsDue) {
+      const group = rankGroups.get(nextRank!)!;
+      if (group.length > 1) group.forEach(e => { e.rankConflict = true; });
+      result.push(...group);
+      rIdx++;
+    } else {
+      result.push(unranked[uIdx]);
+      uIdx++;
+    }
+    slot++;
+  }
+
+  return result;
 };
 
 // --- PUBLIC API ---

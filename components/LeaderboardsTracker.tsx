@@ -186,10 +186,12 @@ export const LeaderboardsTracker: React.FC = () => {
     const myIdx = leaderboard.findIndex(
       p => p.name.toLowerCase() === username.toLowerCase()
     );
+    const myEntry = myIdx >= 0 ? leaderboard[myIdx] : null;
     return {
       total: leaderboard.length,
-      myPosition: myIdx >= 0 ? myIdx + 1 : null,
-      myParcels: myIdx >= 0 ? leaderboard[myIdx].parcels : null,
+      // A confirmed rank is always shown literally — never the computed row number.
+      myPosition: myEntry ? (typeof myEntry.rank === 'number' ? myEntry.rank : myIdx + 1) : null,
+      myParcels: myEntry ? myEntry.parcels : null,
       leader: leaderboard[0] || null
     };
   }, [leaderboard, username]);
@@ -880,7 +882,8 @@ export const LeaderboardsTracker: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-700">
                 {displayedLeaderboard.map((entry, idx) => {
-                  const position = entry._pos;
+                  // A confirmed rank is always shown literally — never the computed row number.
+                  const position = typeof entry.rank === 'number' ? entry.rank : entry._pos;
                   const prevPos = idx > 0 ? displayedLeaderboard[idx - 1]._pos : null;
                   const showGapDivider = prevPos !== null && position !== prevPos + 1;
                   const isMe = entry.name.toLowerCase() === username.toLowerCase();
@@ -951,6 +954,14 @@ export const LeaderboardsTracker: React.FC = () => {
                               title="Rank reported directly from the in-game leaderboard"
                             >
                               🏆 #{entry.rank}
+                            </span>
+                          )}
+                          {entry.rankConflict && (
+                            <span
+                              className="text-[9px] bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded font-bold"
+                              title="Another player is also recorded at this exact rank — check your entries"
+                            >
+                              ⚠ duplicate rank
                             </span>
                           )}
                         </div>
