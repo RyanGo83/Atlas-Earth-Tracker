@@ -154,21 +154,49 @@ const mergePlayer = (
 };
 
 /**
- * Sort the merged leaderboard:
- *   1. Players with a manual rank first, in rank order ascending
- *   2. Then players without a rank, sorted by parcels descending
- *   3. Ties on parcels broken by most recent observation
+ * Sort the merged leaderboard.
+ *
+ * A manual rank is ground truth, but it can only earn a player a spot at the top
+ * of OUR list if we actually have enough recorded entries to plausibly account for
+ * everyone better than them. Concretely: a player with rank R needs at least R-1
+ * other recorded entries (consistent-ranked players with a smaller rank, plus anyone
+ * we only have a parcel-count guess for) to "stand in" for the players we haven't
+ * recorded. If we don't have that many, their rank can't be trusted to place them
+ * that high on THIS list — they drop below the parcel-guess players, ordered among
+ * any other such overflow players by rank ascending.
+ *
+ * Final order:
+ *   1. "Consistent" ranked players (rank is justified by available entries), rank ascending
+ *   2. Unranked (parcel-guess only) players, parcels descending
+ *   3. "Overflow" ranked players (rank isn't justified by available entries), rank ascending
  */
-const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
-  return entries.sort((a, b) => {
-    const aHas = typeof a.rank === 'number';
-    const bHas = typeof b.rank === 'number';
-    if (aHas && !bHas) return -1;
-    if (!aHas && bHas) return 1;
-    if (aHas && bHas) return (a.rank! - b.rank!);
-    if (b.parcels !== a.parcels) return b.parcels - a.parcels;
-    return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
-  });
+export const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
+  const ranked = entries
+    .filter(e => typeof e.rank === 'number')
+    .sort((a, b) => a.rank! - b.rank!);
+  const unranked = entries
+    .filter(e => typeof e.rank !== 'number')
+    .sort((a, b) => {
+      if (b.parcels !== a.parcels) return b.parcels - a.parcels;
+      return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
+    });
+
+  const unrankedCount = unranked.length;
+  const consistent: MergedPlayerEntry[] = [];
+  const overflow: MergedPlayerEntry[] = [];
+
+  for (const entry of ranked) {
+    const rank = entry.rank!;
+    // Can our recorded entries (consistent ranked so far + all unranked) plausibly
+    // account for the rank-1 players who should be better than this one?
+    if (rank - 1 <= consistent.length + unrankedCount) {
+      consistent.push(entry);
+    } else {
+      overflow.push(entry);
+    }
+  }
+
+  return [...consistent, ...unranked, ...overflow];
 };
 
 // --- PUBLIC API ---

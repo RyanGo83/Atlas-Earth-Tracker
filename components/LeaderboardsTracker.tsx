@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapPin, Map, Globe, Trophy, ChevronDown, Crown, User, Users, LineChart as LineChartIcon, Plus, X, Info, Pencil, Trash2, Check } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { getMergedLeaderboard, listScopeValues, type MergedPlayerEntry } from '../leaderboardMerge';
+import { getMergedLeaderboard, listScopeValues, sortMerged, type MergedPlayerEntry } from '../leaderboardMerge';
 import { parseLocalDate } from '../utils';
 
 // localStorage keys
@@ -22,18 +22,8 @@ const SCOPE_CONFIG: Record<UIScope, { label: string; icon: React.ReactNode; colo
   WORLD:   { label: 'World',   icon: <Trophy size={16} />, color: 'bg-cyan-500' },
 };
 
-// Sort that mirrors leaderboardMerge: manual rank first (ascending), then parcels descending
-const sortEntries = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
-  return [...entries].sort((a, b) => {
-    const aHas = typeof a.rank === 'number';
-    const bHas = typeof b.rank === 'number';
-    if (aHas && !bHas) return -1;
-    if (!aHas && bHas) return 1;
-    if (aHas && bHas) return (a.rank! - b.rank!);
-    if (b.parcels !== a.parcels) return b.parcels - a.parcels;
-    return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
-  });
-};
+// Sort entries using the shared rule from leaderboardMerge.ts (rank is a floor, not a jump)
+const sortEntries = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => sortMerged([...entries]);
 
 export const LeaderboardsTracker: React.FC = () => {
   // Raw data from localStorage
