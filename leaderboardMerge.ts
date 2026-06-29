@@ -157,18 +157,19 @@ const mergePlayer = (
  * Sort the merged leaderboard.
  *
  * A manual rank is ground truth, but it can only earn a player a spot at the top
- * of OUR list if we actually have enough recorded entries to plausibly account for
+ * of OUR list if we actually have enough OTHER CONFIRMED ranks to account for
  * everyone better than them. Concretely: a player with rank R needs at least R-1
- * other recorded entries (consistent-ranked players with a smaller rank, plus anyone
- * we only have a parcel-count guess for) to "stand in" for the players we haven't
- * recorded. If we don't have that many, their rank can't be trusted to place them
- * that high on THIS list — they drop below the parcel-guess players, ordered among
- * any other such overflow players by rank ascending.
+ * other players with a smaller confirmed rank to justify their spot. A parcel-count
+ * guess (no confirmed rank) can't be used to fill that gap — we genuinely don't know
+ * where an unranked player's true rank falls, so they can't vouch for anyone. If we
+ * don't have enough confirmed ranks to account for the gap, this player's rank can't
+ * be trusted to place them that high on THIS list — they drop below the parcel-guess
+ * players, ordered among any other such overflow players by rank ascending.
  *
  * Final order:
- *   1. "Consistent" ranked players (rank is justified by available entries), rank ascending
+ *   1. "Consistent" ranked players (rank is justified by other confirmed ranks), rank ascending
  *   2. Unranked (parcel-guess only) players, parcels descending
- *   3. "Overflow" ranked players (rank isn't justified by available entries), rank ascending
+ *   3. "Overflow" ranked players (rank isn't justified by other confirmed ranks), rank ascending
  */
 export const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] => {
   const ranked = entries
@@ -181,15 +182,15 @@ export const sortMerged = (entries: MergedPlayerEntry[]): MergedPlayerEntry[] =>
       return parseLocalDate(b.lastSeen).getTime() - parseLocalDate(a.lastSeen).getTime();
     });
 
-  const unrankedCount = unranked.length;
   const consistent: MergedPlayerEntry[] = [];
   const overflow: MergedPlayerEntry[] = [];
 
   for (const entry of ranked) {
     const rank = entry.rank!;
-    // Can our recorded entries (consistent ranked so far + all unranked) plausibly
-    // account for the rank-1 players who should be better than this one?
-    if (rank - 1 <= consistent.length + unrankedCount) {
+    // Can our OTHER CONFIRMED ranks plausibly account for the rank-1 players who
+    // should be better than this one? Unranked (guess-only) players don't count —
+    // they can't prove anyone exists at the ranks in between.
+    if (rank - 1 <= consistent.length) {
       consistent.push(entry);
     } else {
       overflow.push(entry);
