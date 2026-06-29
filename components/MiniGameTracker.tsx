@@ -128,6 +128,8 @@ export const MiniGameTracker: React.FC = () => {
                 <option>🏎️ Racer</option>
                 <option>🚢 Warship</option>
                 <option>✊ Rock Paper Scissors</option>
+                <option>🎣 Fishing - Vintage</option>
+                <option>🏎️ Racing - Vintage</option>
              </select>
           </div>
           <div className="md:col-span-1">
